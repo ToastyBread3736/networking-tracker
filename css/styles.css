@@ -140,7 +140,9 @@ legend { font-size: 12px; color: var(--muted); padding: 0; margin-bottom: 5px; }
 .segmented.small span { padding: 4px 12px; font-size: 12px; }
 
 /* ---------- ideas dialog ---------- */
-.ideas-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.ideas-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.ideas-head > div:first-child { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; }
+.ideas-head .segmented { flex: none; }
 .ideas-head h2 { margin-bottom: 4px; }
 #ideas-sub { font-size: 13px; }
 .ideas-wrap section { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
