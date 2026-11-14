@@ -5,18 +5,26 @@
 
 How to choose ideas:
 
+First decide what kind of relationship this is. Relationship comes before level.
+- FRIEND: the relationship is Friend, or a peer/classmate at level 4–5, or the notes show you hang out socially (party together, go out, room together, etc.). Treat them as a friend, not a networking contact.
+- PEER: a peer or classmate at level 1–3.
+- PROFESSIONAL: anyone senior or in a professional role (professional, mentor, recruiter, professor, manager, alumni you don't know socially).
+
 GOAL = BUILD (make the connection stronger)
-- Level 1–2 (new or weak): start small and give first. Examples: a thoughtful comment on their LinkedIn post, congratulating them on news, sharing a resource that fits their work, asking one specific question, or saying hello at an upcoming event.
-- Level 3 with someone senior (professional, mentor, recruiter, professor, manager): ask for a 20–30 minute coffee chat or informational conversation. Meet in person if you're in the same city, otherwise on a video call. Ask for advice on a specific decision.
-- Peers, classmates, and friends: suggest a casual shared activity they would actually enjoy, picked from their interests. Examples: lunch, coffee, a pickup game or sport (volleyball, etc.), a study or work session, or going to a meetup, talk, or game together.
-- Level 4–5: bigger gives and asks. Examples: introduce them to someone useful, propose working on something together, invite them to an event, offer concrete help, or ask for a referral if it's appropriate.
+- FRIEND: ideas should be what college students actually do together for fun. Examples: going out or to a party, hosting people over, a game night, a tailgate or watching a game, a concert or show, a road trip or day trip, a late-night food run, the gym, pickup sports or intramurals, or a spontaneous "you free tonight?" plan. Lean into whatever the notes and interests say you already do together. Do NOT suggest networking-style ideas for friends: co-hosting events, collaborating on projects, introductions, referrals, sharing articles, or LinkedIn anything. The only exception is when the extra context asks for it. Congratulations on big news is fine, but as a text or in person (or "let's celebrate"), not a LinkedIn comment.
+- PEER: a casual shared activity they would actually enjoy, picked from their interests. Examples: lunch, coffee, a pickup game (volleyball, etc.), a study session, or going to a meetup, talk, or game together.
+- PROFESSIONAL, level 1–2: start small and give first. Examples: a thoughtful comment on their LinkedIn post, congratulating them on news, sharing a resource that fits their work, asking one specific question, or saying hello at an upcoming event.
+- PROFESSIONAL, level 3: ask for a 20–30 minute coffee chat or informational conversation. Meet in person if you're in the same city, otherwise on a video call. Ask for advice on a specific decision.
+- PROFESSIONAL, level 4–5: bigger gives and asks. Examples: introduce them to someone useful, propose working on something together, invite them to an event, offer concrete help, or ask for a referral if it's appropriate.
 
 GOAL = MAINTAIN (stay on their mind, with little effort from either of you)
-- A quick check-in email or text, an article/podcast/video related to their work or interests ("this made me think of you"), a comment or congratulations on a LinkedIn post or milestone, a holiday or birthday note, or a short update on something they helped with.
+- FRIEND: a text, sending a meme/reel/TikTok that's an inside joke or fits them, reacting to their story, a "we need to hang out soon" message, or a birthday message. Nothing that sounds like networking.
+- PEER and PROFESSIONAL: a quick check-in email or text, an article/podcast/video related to their work or interests ("this made me think of you"), a comment or congratulations on a LinkedIn post or milestone, a holiday or birthday note, or a short update on something they helped with.
 - No big asks. Keep it easy for them to reply to, or not reply at all.
 
 Always:
-- Student organizations and leadership roles make good openings: their org's events, asking how their role is going, working together across orgs, or (for officers) offering to help or speak.
+- Notes and interests are the strongest signal about the person. If the notes say how you spend time together, most ideas should build on that.
+- For PEER and PROFESSIONAL contacts, student organizations and leadership roles make good openings: their org's events, asking how their role is going, working together across orgs, or (for officers) offering to help or speak. For FRIENDS, an org event is only something to go to together for fun.
 - Some people have more than one job (e.g. a professor who also runs a business). Choose the role that fits the idea best.
 - Base ideas on the profile: jobs, organizations, location, relationship, level, interests, notes, and past touchpoints. Don't suggest something they've already done recently.
 - Suggest in-person ideas only if you and the contact are in the same area (or the extra context says you'll be there). Otherwise suggest virtual ones.
@@ -30,7 +38,8 @@ Always:
 - Length: for MAINTAIN, 2–4 sentences. For BUILD, under 120 words, with one clear and easy ask (suggest a time or option, and make it easy to say no).
 - Mention something specific from the profile or idea, so it couldn't have been sent to anyone.
 - Use [square-bracket placeholders] for anything the user must fill in (an article link, a date, a detail you don't know). Never invent specifics.
-- Match the channel: email gets a subject line; LinkedIn messages and texts are shorter and have no subject.`;
+- Match the channel: email gets a subject line; LinkedIn messages and texts are shorter and have no subject.
+- To a FRIEND, write the way you'd text a friend: short, relaxed, lowercase is fine, no formal ask or sign-off.`;
 
   function personContext(p, me, mode, focus) {
     const S = NT.store;
