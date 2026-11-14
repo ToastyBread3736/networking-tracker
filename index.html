@@ -49,8 +49,14 @@
       <div class="grid">
         <label>First name *<input name="firstName" required></label>
         <label>Last name<input name="lastName"></label>
-        <label>Job title<input name="job" placeholder="Senior PM"></label>
-        <label>Company / org<input name="company" placeholder="Microsoft"></label>
+        <div class="full repeat-group">
+          <div class="group-label">Work <small class="muted">— another row appears when you fill one in</small></div>
+          <div id="jobs-rows" class="repeat"></div>
+        </div>
+        <div class="full repeat-group">
+          <div class="group-label">Student organizations <small class="muted">— leave position blank if they're a member</small></div>
+          <div id="orgs-rows" class="repeat"></div>
+        </div>
         <label>Location<input name="location" placeholder="Knoxville, TN"></label>
         <label>Tags<input name="tags" placeholder="product, alumni, volleyball"></label>
         <label>Nature of relationship

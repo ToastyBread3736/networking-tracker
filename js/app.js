@@ -57,7 +57,7 @@
   function matches(p, q) {
     if (!q) return true;
     if (q.startsWith('#')) return p.tags.some(t => t.startsWith(q.slice(1)));
-    const hay = [fullName(p), p.job, p.company, p.location, p.relationship, p.interests, p.notes, ...p.tags]
+    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...p.orgs.flatMap(o => [o.name, o.role]), p.location, p.relationship, p.interests, p.notes, ...p.tags]
       .join(' ').toLowerCase();
     return q.split(/\s+/).every(w => hay.includes(w));
   }
@@ -76,6 +76,16 @@
     return list.sort(cmp);
   }
 
+  // First job (or first org if no job), with "+N" when there are more roles.
+  function subtitle(p) {
+    const first = p.jobs[0] ? S.jobLabel(p.jobs[0], ' · ') : p.orgs[0] ? S.orgLabel(p.orgs[0]) : '';
+    const more = p.jobs.length + p.orgs.length - 1;
+    return first ? (more > 0 ? `${first}  +${more}` : first) : '—';
+  }
+  function allRoles(p) {
+    return [...p.jobs.map(j => S.jobLabel(j)), ...p.orgs.map(S.orgLabel)].join('\n');
+  }
+
   function row(p) {
     const d = S.dueInfo(p);
     const extra = p.tags.length - 3;
@@ -83,7 +93,7 @@
       h('span', { class: `due ${d.status}`, title: d.dueDate ? `Next touchpoint: ${d.dueDate}` : 'No touchpoint logged yet' }, d.label),
       h('div', { class: 'who', title: 'Edit', onclick: () => openPerson(p.id) },
         h('span', { class: 'name' }, fullName(p)),
-        h('span', { class: 'job' }, [p.job, p.company].filter(Boolean).join(' · ') || '—')),
+        h('span', { class: 'job', title: allRoles(p) }, subtitle(p))),
       h('span', { class: 'loc col-opt', title: p.location }, p.location || '—'),
       h('span', { class: 'level', title: `Level ${p.level}: ${S.LEVELS[p.level]}` },
         [1, 2, 3, 4, 5].map(i => h('i', { class: i <= p.level ? 'on' : '' }))),
@@ -155,6 +165,44 @@
     fp.frequencyCustom.required = custom;
   }
 
+  // ---------- repeatable rows (work, student orgs) ----------
+  // There is always one empty row at the end. Typing in it adds a new one; empty rows in the middle are removed on blur.
+  const REPEAT = {
+    jobs: { box: '#jobs-rows', max: 3, fields: [['title', 'Job title', 'Professor of CS'], ['company', 'Company / org', 'UT Knoxville']] },
+    orgs: { box: '#orgs-rows', max: 3, fields: [['name', 'Organization', 'ACM'], ['role', 'Leadership position', 'President (blank = member)']] },
+  };
+
+  function repeatRow(cfg, val = {}) {
+    return h('div', { class: 'repeat-row' },
+      cfg.fields.map(([k, label, ph]) => h('input', { 'data-k': k, 'aria-label': label, placeholder: ph, value: val[k] || '' })));
+  }
+  const rowEmpty = r => [...r.querySelectorAll('input')].every(i => !i.value.trim());
+
+  function ensureTrailing(cfg) {
+    const box = $(cfg.box);
+    const last = box.lastElementChild;
+    if ((!last || !rowEmpty(last)) && box.children.length < cfg.max) box.append(repeatRow(cfg));
+  }
+  function pruneEmpty(cfg) {
+    const rows = [...$(cfg.box).children];
+    rows.slice(0, -1).forEach(r => { if (rowEmpty(r) && !r.contains(document.activeElement)) r.remove(); });
+    ensureTrailing(cfg);
+  }
+  function fillRepeat(cfg, items) {
+    $(cfg.box).replaceChildren(...(items || []).map(v => repeatRow(cfg, v)));
+    ensureTrailing(cfg);
+  }
+  function readRepeat(cfg) {
+    return [...$(cfg.box).children]
+      .map(r => Object.fromEntries([...r.querySelectorAll('input')].map(i => [i.dataset.k, i.value.trim()])))
+      .filter(o => Object.values(o).some(Boolean));
+  }
+  for (const cfg of Object.values(REPEAT)) {
+    const box = $(cfg.box);
+    box.addEventListener('input', () => ensureTrailing(cfg));
+    box.addEventListener('focusout', () => setTimeout(() => pruneEmpty(cfg)));
+  }
+
   function openPerson(id) {
     editingId = id || null;
     const p = id ? byId(id) : null;
@@ -162,9 +210,11 @@
     $('#person-title').textContent = p ? `Edit ${fullName(p)}` : 'Add person';
     $('#btn-delete').hidden = !p;
     const v = p || { level: 3, mode: 'build', frequencyDays: 90, lastTouch: S.todayISO(), tags: [] };
-    for (const k of ['firstName', 'lastName', 'job', 'company', 'location', 'email', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes']) {
+    for (const k of ['firstName', 'lastName', 'location', 'email', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes']) {
       fp.elements[k].value = v[k] || '';
     }
+    fillRepeat(REPEAT.jobs, v.jobs);
+    fillRepeat(REPEAT.orgs, v.orgs);
     fp.tags.value = (v.tags || []).join(', ');
     fp.querySelector(`input[name=level][value="${v.level}"]`).checked = true;
     fp.querySelector(`input[name=mode][value="${v.mode}"]`).checked = true;
@@ -187,6 +237,8 @@
     const fd = new FormData(fp);
     const raw = Object.fromEntries(fd.entries());
     raw.frequencyDays = raw.frequencyPreset === 'custom' ? raw.frequencyCustom : raw.frequencyPreset;
+    raw.jobs = readRepeat(REPEAT.jobs);
+    raw.orgs = readRepeat(REPEAT.orgs);
     const existing = editingId ? byId(editingId) : null;
     if (existing) {
       raw.id = existing.id; raw.createdAt = existing.createdAt; raw.history = existing.history;
@@ -228,7 +280,7 @@
     $('#ideas-name').textContent = fullName(p);
     const d = S.dueInfo(p);
     $('#ideas-sub').textContent = [
-      [p.job, p.company].filter(Boolean).join(' at '),
+      p.jobs.map(j => S.jobLabel(j)).join(' & '),
       p.relationship, `Level ${p.level}`,
       `last touch ${S.sinceLabel(p)}`, d.label.toLowerCase(),
     ].filter(Boolean).join(' · ');

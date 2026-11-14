@@ -193,3 +193,10 @@ legend { font-size: 12px; color: var(--muted); padding: 0; margin-bottom: 5px; }
 .examples summary .muted { font-size: 12px; }
 .examples textarea { margin-top: 8px; }
 code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 12px; }
+
+/* ---------- repeatable rows (work, student orgs) ---------- */
+.repeat-group { display: flex; flex-direction: column; gap: 6px; }
+.group-label { font-size: 12px; color: var(--muted); }
+.repeat { display: flex; flex-direction: column; gap: 6px; }
+.repeat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 560px) { .repeat-row { grid-template-columns: 1fr; } }

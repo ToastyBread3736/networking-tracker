@@ -9,6 +9,7 @@ Open `index.html` in your browser. There's no install, build step, or server.
 ## Features
 
 - **One line per person**: when the next touchpoint is due, name and role, location, level of connection (1–5), relationship, goal (Build/Maintain), and tags. Click a tag to filter by it.
+- **Multiple jobs and student orgs**: Work (job title + company) and Student organizations (org + leadership position) are repeating rows, up to 3 of each. When you fill one in, a new empty row appears, which covers professors who also run a business or students in several orgs. The list shows the first role plus `+N`; hover to see all of them.
 - **Touchpoint tracking**: the next touchpoint date is last touch + desired frequency. Rows are sorted with overdue first. `✓` logs a touchpoint today (and can be undone).
 - **Build vs. Maintain**: each person has a goal, and it changes what kinds of ideas you get.
 - **AI ideas** (`✦`): Claude suggests 5 touchpoint ideas based on the person's role, location, relationship, level, interests, notes, and past touchpoints. Pick one, or type your own.

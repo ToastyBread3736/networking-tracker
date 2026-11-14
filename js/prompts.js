@@ -16,7 +16,9 @@ GOAL = MAINTAIN (stay on their mind, with little effort from either of you)
 - No big asks. Keep it easy for them to reply to, or not reply at all.
 
 Always:
-- Base ideas on the profile: job, company, location, relationship, level, interests, notes, and past touchpoints. Don't suggest something they've already done recently.
+- Student organizations and leadership roles make good openings: their org's events, asking how their role is going, working together across orgs, or (for officers) offering to help or speak.
+- Some people have more than one job (e.g. a professor who also runs a business). Choose the role that fits the idea best.
+- Base ideas on the profile: jobs, organizations, location, relationship, level, interests, notes, and past touchpoints. Don't suggest something they've already done recently.
 - Suggest in-person ideas only if you and the contact are in the same area (or the extra context says you'll be there). Otherwise suggest virtual ones.
 - Match the formality to the relationship. With senior people, respect their time and make one specific ask.
 - Never make up facts about the contact. If an idea depends on something you don't know (a recent post, a news item), tell the user to look it up first, e.g. "check their recent LinkedIn activity for…".
@@ -36,7 +38,10 @@ Always:
     const lines = [
       `CONTACT`,
       `- Name: ${name}`,
-      p.job || p.company ? `- Role: ${[p.job, p.company].filter(Boolean).join(' at ')}` : null,
+      p.jobs.length ? `- Work: ${p.jobs.map(j => S.jobLabel(j)).join('; ')}` : null,
+      p.orgs.length
+        ? `- Student organizations: ${p.orgs.map(o => (o.role ? `${o.role} of ${o.name}` : `member of ${o.name}`)).join('; ')}`
+        : null,
       p.location ? `- Location: ${p.location}` : null,
       p.relationship ? `- Relationship to user: ${p.relationship}` : null,
       `- Level of connection: ${p.level}/5 (${S.LEVELS[p.level]})`,

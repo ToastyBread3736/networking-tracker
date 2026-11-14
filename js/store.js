@@ -69,6 +69,16 @@
     const level = Math.min(5, Math.max(1, parseInt(raw.level, 10) || 3));
     const freq = Math.min(3650, Math.max(1, parseInt(raw.frequencyDays, 10) || 90));
     const lastTouch = /^\d{4}-\d{2}-\d{2}$/.test(raw.lastTouch || '') ? raw.lastTouch : '';
+    // Repeatable entries. Older data stored a single job/company; fold that into jobs[0].
+    let jobs = Array.isArray(raw.jobs)
+      ? raw.jobs.filter(Boolean).map(j => ({ title: str(j.title, 150), company: str(j.company, 150) }))
+          .filter(j => j.title || j.company).slice(0, 3)
+      : [];
+    if (!jobs.length && (str(raw.job) || str(raw.company))) jobs = [{ title: str(raw.job, 150), company: str(raw.company, 150) }];
+    const orgs = Array.isArray(raw.orgs)
+      ? raw.orgs.filter(Boolean).map(o => ({ name: str(o.name, 150), role: str(o.role, 100) }))
+          .filter(o => o.name).slice(0, 3)
+      : [];
     const history = Array.isArray(raw.history)
       ? raw.history
           .filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(h.date || ''))
@@ -79,8 +89,8 @@
       id: str(raw.id, 100) || uid(),
       firstName,
       lastName: str(raw.lastName, 100),
-      job: str(raw.job, 150),
-      company: str(raw.company, 150),
+      jobs,
+      orgs,
       location: str(raw.location, 150),
       email: str(raw.email, 200),
       linkedin: str(raw.linkedin, 300),
@@ -135,9 +145,12 @@
     return { people, skipped: list.length - people.length, me: Array.isArray(data) ? null : data.me || null };
   }
 
+  const jobLabel = (j, sep = ' at ') => [j.title, j.company].filter(Boolean).join(sep);
+  const orgLabel = o => (o.role ? `${o.role}, ${o.name}` : `Member, ${o.name}`);
+
   window.NT = window.NT || {};
   NT.store = {
-    LEVELS, uid, todayISO, dueInfo, sinceLabel, normalize,
+    LEVELS, uid, jobLabel, orgLabel, todayISO, dueInfo, sinceLabel, normalize,
     loadPeople, savePeople, getSettings, saveSettings, exportJSON, parseImport,
   };
 })();
