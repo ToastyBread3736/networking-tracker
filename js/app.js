@@ -241,9 +241,29 @@
     $('#draft-out').hidden = true;
     $('#draft-subject').value = '';
     $('#draft-body').value = '';
+    $('#draft-examples-text').value = '';
+    $('#draft-examples').open = false;
+    updateExamplesSource();
     renderHistory(p);
     dlgIdeas.showModal();
   }
+
+  // ---------- writing examples ----------
+  const TONE_LABEL = { friendly: 'Friendly', professional: 'Professional', casual: 'Casual' };
+  function currentExamples() {
+    return NT.prompts.resolveExamples(S.getSettings(), $('#draft-tone').value, $('#draft-examples-text').value);
+  }
+  function updateExamplesSource() {
+    const { source } = currentExamples();
+    const tone = TONE_LABEL[$('#draft-tone').value];
+    $('#examples-source').textContent = {
+      custom: '· using these (overrides defaults)',
+      default: `· using your default ${tone} examples`,
+      none: `· no ${tone} defaults yet (add them in ⚙ Settings)`,
+    }[source];
+  }
+  $('#draft-tone').addEventListener('change', updateExamplesSource);
+  $('#draft-examples-text').addEventListener('input', updateExamplesSource);
 
   function renderHistory(p) {
     $('#history-section').hidden = !p.history.length;
@@ -306,7 +326,7 @@
     if (!idea) return;
     setBusy(btn, st, true, 'Drafting…');
     try {
-      const out = await NT.ai.draftMessage(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value);
+      const out = await NT.ai.draftMessage(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value, currentExamples().text);
       $('#draft-subject').value = out.subject || '';
       $('#draft-subject').hidden = !out.subject;
       $('#draft-body').value = out.body || '';
@@ -324,7 +344,7 @@
     const idea = needIdea($('#draft-status'));
     if (!idea) return;
     $('#draft-status').replaceChildren();
-    copy(NT.prompts.draftCopyPrompt(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value));
+    copy(NT.prompts.draftCopyPrompt(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value, currentExamples().text));
   });
 
   $('#btn-copy-draft').addEventListener('click', () => {
@@ -346,7 +366,9 @@
   const fs = $('#form-settings');
   $('#btn-settings').addEventListener('click', () => {
     const s = S.getSettings();
-    for (const k of ['name', 'location', 'role', 'interests', 'bio', 'apiKey', 'model']) fs.elements[k].value = s[k] || '';
+    for (const k of ['name', 'location', 'role', 'interests', 'bio', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
+      fs.elements[k].value = s[k] || '';
+    }
     dlgSettings.showModal();
   });
   fs.addEventListener('submit', e => {
@@ -354,6 +376,7 @@
     const raw = Object.fromEntries(new FormData(fs).entries());
     for (const k in raw) raw[k] = raw[k].trim();
     S.saveSettings(raw);
+    if (dlgIdeas.open) updateExamplesSource();
     dlgSettings.close();
     toast('Settings saved');
   });

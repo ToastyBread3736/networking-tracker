@@ -107,9 +107,9 @@
     return out.ideas || [];
   }
 
-  async function draftMessage(person, me, mode, idea, tone) {
+  async function draftMessage(person, me, mode, idea, tone, examples) {
     const system = NT.prompts.PLAYBOOK + '\n\n' + NT.prompts.DRAFT_RULES;
-    return structured(system, NT.prompts.draftRequest(person, me, mode, idea, tone), DRAFT_SCHEMA);
+    return structured(system, NT.prompts.draftRequest(person, me, mode, idea, tone, examples), DRAFT_SCHEMA);
   }
 
   window.NT = window.NT || {};

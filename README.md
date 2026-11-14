@@ -13,6 +13,7 @@ Open `index.html` in your browser. There's no install, build step, or server.
 - **Build vs. Maintain**: each person has a goal, and it changes what kinds of ideas you get.
 - **AI ideas** (`✦`): Claude suggests 5 touchpoint ideas based on the person's role, location, relationship, level, interests, notes, and past touchpoints. Pick one, or type your own.
 - **AI drafts**: turns the chosen idea into a short message you can edit. Clicking "Sent" logs the touchpoint.
+- **Writing examples**: in Settings, paste messages you've actually sent for each tone (Friendly / Professional / Casual). Drafts copy your voice, length and formatting, not the content. In the ideas dialog, **Example messages for this draft** overrides the defaults for that one message. Separate multiple examples with a `---` line.
 - **Copy prompt**: every AI step can be copied as a prompt to paste into claude.ai, so you don't need an API key.
 - **Local storage + Export/Import**: data lives in your browser's localStorage. Export saves a JSON backup, and Import can merge it into or replace your current data. Your API key is never exported.
 

@@ -6,6 +6,7 @@
 
   const DEFAULT_SETTINGS = {
     name: '', location: '', role: '', interests: '', bio: '',
+    exFriendly: '', exProfessional: '', exCasual: '', // default writing examples per tone
     apiKey: '', model: 'claude-opus-5-5',
   };
 

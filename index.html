@@ -161,6 +161,10 @@
           <button id="btn-copy-draft-prompt">Copy prompt</button>
           <span id="draft-status" class="muted"></span>
         </div>
+        <details id="draft-examples" class="examples">
+          <summary>Example messages for this draft <span id="examples-source" class="muted"></span></summary>
+          <textarea id="draft-examples-text" rows="4" placeholder="Paste example messages just for this draft. If filled in, these replace your default examples from Settings. Separate multiple examples with ---"></textarea>
+        </details>
         <div id="draft-out" hidden>
           <input id="draft-subject" placeholder="Subject">
           <textarea id="draft-body" rows="8"></textarea>
@@ -195,6 +199,19 @@
         <label class="full">Your interests<input name="interests" placeholder="volleyball, ML, startups"></label>
         <label class="full">Goals / anything the AI should know
           <textarea name="bio" rows="2" placeholder="Looking for a PM internship for summer 2027…"></textarea>
+        </label>
+      </div>
+      <h3>Writing examples <small class="muted">— default style for drafts in each tone</small></h3>
+      <p class="muted small">Paste one or more messages you've actually sent. Drafts will match their voice, length, and formatting, not their content. Separate multiple examples with a line containing <code>---</code>.</p>
+      <div class="grid">
+        <label class="full">Friendly
+          <textarea name="exFriendly" rows="4" placeholder="Hey Jake! Great seeing you at the career fair…"></textarea>
+        </label>
+        <label class="full">Professional
+          <textarea name="exProfessional" rows="4" placeholder="Hi Dr. Patel, thank you again for taking the time…"></textarea>
+        </label>
+        <label class="full">Casual
+          <textarea name="exCasual" rows="4" placeholder="yo you down for volleyball saturday?"></textarea>
         </label>
       </div>
       <h3>AI</h3>

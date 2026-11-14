@@ -186,3 +186,10 @@ legend { font-size: 12px; color: var(--muted); padding: 0; margin-bottom: 5px; }
   .list-head, .row { grid-template-columns: 80px 1fr 96px; }
   .list-head span:nth-child(4), .list-head span:nth-child(6), .row .level, .row .mode { display: none; }
 }
+
+/* ---------- writing examples ---------- */
+.examples { margin: 4px 0 10px; }
+.examples summary { cursor: pointer; font-size: 13px; color: var(--text); padding: 4px 0; user-select: none; }
+.examples summary .muted { font-size: 12px; }
+.examples textarea { margin-top: 8px; }
+code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 12px; }

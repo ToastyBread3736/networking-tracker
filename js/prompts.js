@@ -75,14 +75,33 @@ Always:
     return `${idea.title} (${idea.channel.replace('_', ' ')}): ${idea.description}`;
   }
 
-  function draftRequest(p, me, mode, idea, tone) {
-    return `${personContext(p, me, mode, '')}\n\nCHOSEN IDEA: ${ideaText(idea)}\nTONE: ${tone}\n\nWrite the message the user would send for this idea.`;
+  const TONE_KEYS = { friendly: 'exFriendly', professional: 'exProfessional', casual: 'exCasual' };
+  const MAX_EXAMPLES_CHARS = 8000;
+
+  // Examples pasted for this one draft win; otherwise use the tone's defaults from Settings.
+  function resolveExamples(me, tone, override) {
+    const custom = (override || '').trim();
+    if (custom) return { text: custom.slice(0, MAX_EXAMPLES_CHARS), source: 'custom' };
+    const def = (me[TONE_KEYS[tone]] || '').trim();
+    if (def) return { text: def.slice(0, MAX_EXAMPLES_CHARS), source: 'default' };
+    return { text: '', source: 'none' };
   }
 
-  function draftCopyPrompt(p, me, mode, idea, tone) {
-    return `${PLAYBOOK}\n\n${DRAFT_RULES}\n\n${draftRequest(p, me, mode, idea, tone)}\nIf it's an email, start with "Subject: …". Output only the message.`;
+  function examplesBlock(examples) {
+    if (!examples) return '';
+    const parts = examples.split(/^\s*---+\s*$/m).map(s => s.trim()).filter(Boolean);
+    const body = parts.map(s => `<example>\n${s}\n</example>`).join('\n');
+    return `\n\nWRITING EXAMPLES (messages the user actually wrote)\nMatch their voice: word choice, sentence length, greeting and sign-off style, punctuation, capitalization, emoji use, and overall length. Do NOT copy their content or facts; they are about other people and situations.\n${body}`;
+  }
+
+  function draftRequest(p, me, mode, idea, tone, examples) {
+    return `${personContext(p, me, mode, '')}\n\nCHOSEN IDEA: ${ideaText(idea)}\nTONE: ${tone}${examplesBlock(examples)}\n\nWrite the message the user would send for this idea.`;
+  }
+
+  function draftCopyPrompt(p, me, mode, idea, tone, examples) {
+    return `${PLAYBOOK}\n\n${DRAFT_RULES}\n\n${draftRequest(p, me, mode, idea, tone, examples)}\nIf it's an email, start with "Subject: …". Output only the message.`;
   }
 
   window.NT = window.NT || {};
-  NT.prompts = { PLAYBOOK, DRAFT_RULES, ideasRequest, ideasCopyPrompt, draftRequest, draftCopyPrompt };
+  NT.prompts = { PLAYBOOK, DRAFT_RULES, resolveExamples, ideasRequest, ideasCopyPrompt, draftRequest, draftCopyPrompt };
 })();
