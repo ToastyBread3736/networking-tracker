@@ -10,7 +10,8 @@ Open `index.html` in your browser. There's no install, build step, or server.
 
 - **One line per person**: when the next touchpoint is due, name and role, location, level of connection (1–5), relationship, goal (Build/Maintain), and tags. Click a tag to filter by it.
 - **Multiple jobs and student orgs**: Work (job title + company) and Student organizations (org + leadership position) are repeating rows, up to 3 of each. When you fill one in, a new empty row appears, which covers professors who also run a business or students in several orgs. The list shows the first role plus `+N`; hover to see all of them.
-- **Touchpoint tracking**: the next touchpoint date is last touch + desired frequency. Rows are sorted with overdue first. `✓` logs a touchpoint today (and can be undone).
+- **Touchpoint tracking**: the next touchpoint date is last touch + desired frequency. Rows are sorted with overdue first.
+- **Touchpoint log**: `✓` asks what it was (Coffee chat, Lunch, Text, …), the date, and notes on what you learned. Each touchpoint shows on the person's timeline (open their profile with `✎`), where you can delete it. Tick "Also add to profile notes" for lasting facts. Touchpoint notes feed into AI ideas and drafts, e.g. "likes donuts on Sundays" can become "bring donuts to the next coffee chat".
 - **Build vs. Maintain**: each person has a goal, and it changes what kinds of ideas you get.
 - **AI ideas** (`✦`): Claude suggests 5 touchpoint ideas based on the person's role, location, relationship, level, interests, notes, and past touchpoints. Pick one, or type your own.
 - **AI drafts**: turns the chosen idea into a short message you can edit. Clicking "Sent" logs the touchpoint.

@@ -160,6 +160,22 @@ legend { font-size: 12px; color: var(--muted); padding: 0; margin-bottom: 5px; }
 .history { list-style: none; margin: 0; padding: 0; font-size: 13px; }
 .history li { padding: 4px 0; color: #c3ccd7; }
 .history li span { color: var(--muted); margin-right: 8px; font-variant-numeric: tabular-nums; }
+.history li .hn { display: block; margin: 2px 0 0; color: var(--muted); white-space: pre-wrap; }
+
+/* touchpoint log + profile timeline */
+label.check { flex-direction: row; align-items: center; gap: 8px; font-size: 13px; color: var(--text); cursor: pointer; }
+label.check input { width: auto; margin: 0; }
+.touches { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
+.touches-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.touches-head h3 { margin: 0; }
+.timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; }
+.timeline li { display: grid; grid-template-columns: 92px 1fr auto; gap: 2px 10px; padding: 7px 4px; border-radius: 6px; font-size: 13px; }
+.timeline li:hover { background: var(--panel-2); }
+.timeline .d { color: var(--muted); font-variant-numeric: tabular-nums; }
+.timeline .t { color: var(--text); font-weight: 500; }
+.timeline .n { grid-column: 2; color: #c3ccd7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.timeline .x { grid-column: 3; grid-row: 1; padding: 0 6px; line-height: 1.4; }
+.timeline .empty-t { display: block; color: var(--muted); padding: 4px; }
 
 .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }

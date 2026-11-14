@@ -104,6 +104,13 @@
           <textarea name="notes" rows="3" placeholder="How you met, what they're working on, things they mentioned…"></textarea>
         </label>
       </div>
+      <section id="person-touches" class="touches" hidden>
+        <div class="touches-head">
+          <h3>Touchpoints</h3>
+          <button type="button" id="btn-person-log">+ Log touchpoint</button>
+        </div>
+        <ul id="person-touch-list" class="timeline"></ul>
+      </section>
       <div class="dlg-actions">
         <button type="button" id="btn-delete" class="danger" hidden>Delete</button>
         <span class="spacer"></span>
@@ -125,6 +132,47 @@
     <option value="Alumni"></option>
     <option value="Friend"></option>
     <option value="Other"></option>
+  </datalist>
+
+  <!-- Log a touchpoint -->
+  <dialog id="dlg-log">
+    <form id="form-log" method="dialog">
+      <h2 id="log-title">Log touchpoint</h2>
+      <div class="grid">
+        <label>What was it? *
+          <input name="type" list="touch-types" required placeholder="Coffee chat">
+        </label>
+        <label>Date<input name="date" type="date" required></label>
+        <label class="full">Notes
+          <textarea name="note" rows="4" placeholder="What you talked about, what you learned about them, any follow-ups… e.g. They like getting a box of donuts every Sunday."></textarea>
+        </label>
+        <label class="check full"><input type="checkbox" name="toProfile"> Also add these notes to their profile notes</label>
+      </div>
+      <p class="muted small">Touchpoint notes stay on their timeline and are used when suggesting ideas and drafting messages.</p>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button type="button" data-close>Cancel</button>
+        <button type="submit" class="primary">Log it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <datalist id="touch-types">
+    <option value="Coffee chat"></option>
+    <option value="Lunch"></option>
+    <option value="Dinner"></option>
+    <option value="Hangout"></option>
+    <option value="Party / night out"></option>
+    <option value="Sports / game"></option>
+    <option value="Event"></option>
+    <option value="Call"></option>
+    <option value="Video call"></option>
+    <option value="Email"></option>
+    <option value="Text"></option>
+    <option value="LinkedIn message"></option>
+    <option value="LinkedIn comment"></option>
+    <option value="Shared an article"></option>
+    <option value="Ran into them"></option>
   </datalist>
 
   <!-- Ideas + drafts -->

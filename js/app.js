@@ -57,7 +57,7 @@
   function matches(p, q) {
     if (!q) return true;
     if (q.startsWith('#')) return p.tags.some(t => t.startsWith(q.slice(1)));
-    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...p.orgs.flatMap(o => [o.name, o.role]), p.location, p.relationship, p.interests, p.notes, ...p.tags]
+    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...p.orgs.flatMap(o => [o.name, o.role]), p.location, p.relationship, p.interests, p.notes, ...p.tags, ...p.history.flatMap(x => [x.type, x.note])]
       .join(' ').toLowerCase();
     return q.split(/\s+/).every(w => hay.includes(w));
   }
@@ -103,7 +103,7 @@
         p.tags.slice(0, 3).map(t => h('span', { class: 'tag', title: `Filter by #${t}`, onclick: () => setQuery('#' + t) }, t)),
         extra > 0 ? h('span', { class: 'tag', title: p.tags.slice(3).join(', ') }, `+${extra}`) : null),
       h('div', { class: 'actions' },
-        h('button', { class: 'ghost', title: 'Log a touchpoint today', onclick: () => quickLog(p.id) }, '✓'),
+        h('button', { class: 'ghost', title: 'Log a touchpoint', onclick: () => openLog(p.id) }, '✓'),
         h('button', { class: 'ghost', title: 'Ideas & drafts', onclick: () => openIdeas(p.id) }, '✦'),
         h('button', { class: 'ghost', title: 'Edit', onclick: () => openPerson(p.id) }, '✎')),
     );
@@ -134,20 +134,87 @@
   function setQuery(q) { view.query = q; $('#search').value = q; render(); }
 
   // ---------- touchpoints ----------
-  function logTouch(id, note) {
+  const dlgLog = $('#dlg-log');
+  const fl = $('#form-log');
+  let logCtx = null; // { id, onDone }
+
+  // Opens the "what was it + notes" dialog. Used by ✓ in the list, the profile, and "Sent" in the ideas dialog.
+  function openLog(id, { type = '', onDone } = {}) {
     const p = byId(id);
     if (!p) return;
-    const prev = { lastTouch: p.lastTouch, history: [...p.history] };
-    p.lastTouch = S.todayISO();
-    p.history = [...p.history, { date: p.lastTouch, note: note || 'Touchpoint' }].slice(-50);
+    logCtx = { id, onDone };
+    fl.reset();
+    $('#log-title').textContent = `Log touchpoint with ${p.firstName}`;
+    fl.elements.type.value = type;
+    fl.elements.date.value = S.todayISO();
+    fl.elements.date.max = S.todayISO();
+    dlgLog.showModal();
+    (type ? fl.elements.note : fl.elements.type).focus();
+  }
+
+  fl.addEventListener('submit', e => {
+    e.preventDefault();
+    const p = byId(logCtx?.id);
+    if (!p) return dlgLog.close();
+    const entry = { id: S.uid(), date: fl.elements.date.value, type: fl.elements.type.value.trim(), note: fl.elements.note.value.trim() };
+    const toProfile = fl.elements.toProfile.checked && entry.note;
+    const prev = { lastTouch: p.lastTouch, history: [...p.history], notes: p.notes };
+    p.history = [...p.history, entry].sort((a, b) => a.date.localeCompare(b.date)).slice(-50);
+    if (!p.lastTouch || entry.date > p.lastTouch) p.lastTouch = entry.date;
+    if (toProfile) p.notes = [p.notes, entry.note].filter(Boolean).join('\n');
     p.updatedAt = new Date().toISOString();
     persist();
-    toast(`Logged touchpoint with ${p.firstName}`, {
+    // Keep an open edit dialog in sync without discarding unsaved edits in it.
+    if (dlgPerson.open && editingId === p.id) {
+      if (!fp.lastTouch.value || entry.date > fp.lastTouch.value) fp.lastTouch.value = entry.date;
+      if (toProfile) fp.notes.value = [fp.notes.value.trim(), entry.note].filter(Boolean).join('\n');
+    }
+    refreshTouchViews(p);
+    dlgLog.close();
+    const done = logCtx.onDone;
+    logCtx = null;
+    if (done) done();
+    toast(`Logged ${entry.type.toLowerCase()} with ${p.firstName}`, {
       label: 'Undo',
-      fn: () => { Object.assign(p, prev); persist(); },
+      fn: () => { Object.assign(p, prev); persist(); syncPersonForm(p); refreshTouchViews(p); },
+    });
+  });
+
+  function deleteTouch(p, entryId) {
+    const entry = p.history.find(x => x.id === entryId);
+    if (!entry) return;
+    const prev = { lastTouch: p.lastTouch, history: [...p.history] };
+    p.history = p.history.filter(x => x.id !== entryId);
+    // If this was the latest touchpoint, fall back to the latest remaining one.
+    if (entry.date === p.lastTouch && p.history.length) p.lastTouch = p.history[p.history.length - 1].date;
+    persist();
+    syncPersonForm(p);
+    refreshTouchViews(p);
+    toast('Touchpoint deleted', {
+      label: 'Undo',
+      fn: () => { Object.assign(p, prev); persist(); syncPersonForm(p); refreshTouchViews(p); },
     });
   }
-  function quickLog(id) { logTouch(id, 'Touchpoint'); }
+
+  function syncPersonForm(p) {
+    if (dlgPerson.open && editingId === p.id) fp.lastTouch.value = p.lastTouch || '';
+  }
+  function refreshTouchViews(p) {
+    if (dlgPerson.open && editingId === p.id) renderTimeline(p);
+    if (dlgIdeas.open && ideasState.id === p.id) renderHistory(p);
+  }
+
+  function renderTimeline(p) {
+    $('#person-touches').hidden = false;
+    const items = [...p.history].reverse().map(x =>
+      h('li', {},
+        h('span', { class: 'd' }, x.date),
+        h('span', { class: 't' }, x.type),
+        h('button', { type: 'button', class: 'ghost x', title: 'Delete this touchpoint', onclick: () => deleteTouch(p, x.id) }, '✕'),
+        x.note ? h('span', { class: 'n' }, x.note) : null));
+    $('#person-touch-list').replaceChildren(...(items.length ? items
+      : [h('li', {}, h('span', { class: 'empty-t' }, 'No touchpoints logged yet.'))]));
+  }
 
   // ---------- add / edit dialog ----------
   const dlgPerson = $('#dlg-person');
@@ -223,6 +290,8 @@
     fp.frequencyCustom.value = PRESETS.includes(f) ? '' : f;
     updateFreqCustom();
     updateLevelHint();
+    if (p) renderTimeline(p);
+    else $('#person-touches').hidden = true;
     dlgPerson.showModal();
     fp.firstName.focus();
   }
@@ -251,6 +320,8 @@
     dlgPerson.close();
     toast(existing ? 'Saved' : `Added ${p.firstName}`);
   });
+
+  $('#btn-person-log').addEventListener('click', () => openLog(editingId));
 
   $('#btn-delete').addEventListener('click', () => {
     const p = byId(editingId);
@@ -322,7 +393,7 @@
   function renderHistory(p) {
     $('#history-section').hidden = !p.history.length;
     $('#history-list').replaceChildren(...p.history.slice(-5).reverse().map(x =>
-      h('li', {}, h('span', {}, x.date), x.note)));
+      h('li', {}, h('span', {}, x.date), x.type, x.note ? h('span', { class: 'hn' }, x.note) : null)));
   }
 
   function renderIdeas() {
@@ -412,10 +483,8 @@
 
   $('#btn-log-sent').addEventListener('click', () => {
     const idea = chosenIdea();
-    const note = idea ? (typeof idea === 'string' ? idea : idea.title) : 'Sent message';
-    logTouch(ideasState.id, note);
-    renderHistory(byId(ideasState.id));
-    dlgIdeas.close();
+    const type = idea ? (typeof idea === 'string' ? idea : idea.title) : 'Sent message';
+    openLog(ideasState.id, { type: type.slice(0, 100), onDone: () => dlgIdeas.close() });
   });
 
   // ---------- settings ----------

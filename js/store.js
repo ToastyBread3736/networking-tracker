@@ -79,10 +79,17 @@
       ? raw.orgs.filter(Boolean).map(o => ({ name: str(o.name, 150), role: str(o.role, 100) }))
           .filter(o => o.name).slice(0, 3)
       : [];
+    // Touchpoints: { id, date, type, note }. Older entries only had `note`, which held the type ("Touchpoint", an idea title).
     const history = Array.isArray(raw.history)
       ? raw.history
           .filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(h.date || ''))
-          .map(h => ({ date: h.date, note: str(h.note, 300) }))
+          .map(h => ({
+            id: str(h.id, 100) || uid(),
+            date: h.date,
+            type: str(h.type, 100) || str(h.note, 100) || 'Touchpoint',
+            note: 'type' in h ? str(h.note, 2000) : '',
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date))
           .slice(-50)
       : [];
     return {

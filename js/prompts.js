@@ -24,6 +24,7 @@ GOAL = MAINTAIN (stay on their mind, with little effort from either of you)
 
 Always:
 - Notes and interests are the strongest signal about the person. If the notes say how you spend time together, most ideas should build on that.
+- Touchpoint notes are things the user learned firsthand. Use them. Follow up on what was discussed (an interview they mentioned, a trip, a project), and turn personal details into thoughtful gestures (e.g. "loves getting donuts on Sundays" → bring a box of donuts to the next coffee chat). Don't repeat the same kind of touchpoint they just had unless it's a regular thing you do together.
 - For PEER and PROFESSIONAL contacts, student organizations and leadership roles make good openings: their org's events, asking how their role is going, working together across orgs, or (for officers) offering to help or speak. For FRIENDS, an org event is only something to go to together for fun.
 - Some people have more than one job (e.g. a professor who also runs a business). Choose the role that fits the idea best.
 - Base ideas on the profile: jobs, organizations, location, relationship, level, interests, notes, and past touchpoints. Don't suggest something they've already done recently.
@@ -59,7 +60,8 @@ Always:
       p.notes ? `- Notes: ${p.notes}` : null,
       `- Last touchpoint: ${S.sinceLabel(p)}${p.lastTouch ? ` (${p.lastTouch})` : ''}; desired every ${p.frequencyDays} days`,
       p.history.length
-        ? `- Recent touchpoints:\n${p.history.slice(-5).map(h => `    ${h.date}: ${h.note || 'touchpoint'}`).join('\n')}`
+        ? `- Past touchpoints (oldest first), with what the user learned:\n${p.history.slice(-10).map(h =>
+            `    ${h.date}: ${h.type}${h.note ? `\n      Notes: ${h.note.replace(/\s*\n\s*/g, ' ')}` : ''}`).join('\n')}`
         : null,
       ``,
       `USER (me)`,
