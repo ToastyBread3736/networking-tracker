@@ -505,9 +505,15 @@
       ideasState.option = null;
       ideasState.optionsFor = key;
       renderOptions();
+      const ran = `${out.searches} search${out.searches === 1 ? '' : 'es'}`;
+      const ERR = {
+        max_uses_exceeded: 'hit the search limit', too_many_requests: 'search was rate limited',
+        unavailable: 'search was unavailable', query_too_long: 'a query was too long',
+      };
+      const problems = (out.errors || []).map(c => ERR[c] || c).join(', ');
       st.textContent = ideasState.options.length
-        ? 'Click one to use it in your draft. Check the link before you invite anyone.'
-        : 'Nothing specific turned up. Try adding context above (a date, a city) and search again.';
+        ? `Click one to use it in your draft. Check the link before you invite anyone. (${ran})`
+        : `Nothing turned up (${ran}${problems ? `; ${problems}` : ''}). Try again, or open the browser console (F12) for details.`;
     } catch (err) {
       setBusy(btn, st, false);
       showError(st, err);

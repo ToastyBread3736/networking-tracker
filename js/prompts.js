@@ -149,18 +149,45 @@ ${body}`;
   }
 
   // ---------- finding real options on the web ----------
-  const OPTIONS_SYSTEM = `You find real, upcoming things the user can do with a contact, for a touchpoint idea they already picked. You have a web search tool.
-- Use at most 3 searches, and make them specific (activity + city + timeframe, e.g. "brass band concert Knoxville December 2026").
+  const OPTIONS_SYSTEM = `You find real, upcoming things the user can do with a contact, for a touchpoint idea they already picked. You have a web search tool, and you must use it before answering. Never answer from memory.
+- Search in the SEARCH AREA and DATE RANGE given in the request. The user should never have to tell you where or when.
+- Use at most 4 searches in total. Run them one at a time (don't write a loop over many queries). Make each one specific: the kind of event + city + month, e.g. "Knoxville Symphony Orchestra concerts December 2026" or "live jazz Knoxville this weekend".
+- Look for real listings first: venue and event calendars (symphony, theaters, music venues, the city's event listings), then narrow down.
 - Only include options you actually found in search results, each with its source URL. Never invent events, dates, times, venues or prices. If a detail isn't in the results, use "".
-- Prefer dated events in the next 4 weeks near the user's location (and the contact's, if they live elsewhere). If no dated event fits, a regular venue or recurring activity (a weekly open gym, a bar with live music on Fridays) is fine.
-- Pick things this contact would actually enjoy, based on their interests, notes and relationship. 2 to 4 options.
+- Prefer dated events within the DATE RANGE. If no dated event fits, a regular venue or recurring activity (a weekly open gym, a bar with live music on Fridays) is fine.
+- Pick things this contact would actually enjoy, based on their interests, notes and relationship. Close matches count: for a brass or trombone idea, an orchestra, jazz or band concert is a good option. 2 to 4 options.
 - "why" is one short line on why it fits this person.
 Your final answer must be ONLY this JSON, with no other text:
 {"options":[{"name":"","when":"","where":"","price":"","why":"","url":""}],"note":""}
-Use "note" for one short caveat (e.g. "couldn't find dated events; these are regular spots"), or "".`;
+Use "note" for one short caveat (e.g. "couldn't find dated events; these are regular spots"), or "". If you found nothing, say in "note" what you searched for.`;
+
+  const SEARCH_WEEKS = 6;
+  function addDaysISO(iso, n) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + n);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  }
+
+  // Where to search, taken from the two profiles so the user doesn't have to type it.
+  function searchArea(p, me) {
+    const mine = (me.location || '').trim(), theirs = (p.location || '').trim();
+    if (mine && theirs && mine.toLowerCase() !== theirs.toLowerCase()) {
+      return `${mine} (user) or ${theirs} (contact); prefer wherever the extra context says you'll both be`;
+    }
+    return mine || theirs;
+  }
 
   function optionsRequest(p, me, mode, idea, focus) {
-    return `${personContext(p, me, mode, focus)}\n\nCHOSEN IDEA: ${ideaText(idea)}\n\nFind 2–4 real, specific options for this idea.`;
+    const today = NT.store.todayISO();
+    const area = searchArea(p, me) ||
+      'unknown (no location in either profile). Use the extra context if it names a place; otherwise say in "note" that a location is needed';
+    return `${personContext(p, me, mode, focus)}
+
+CHOSEN IDEA: ${ideaText(idea)}
+SEARCH AREA: ${area}
+DATE RANGE: ${today} to ${addDaysISO(today, SEARCH_WEEKS * 7)} (the next ${SEARCH_WEEKS} weeks)
+
+Search the web now and find 2–4 real, specific options for this idea.`;
   }
 
   function optionsCopyPrompt(p, me, mode, idea, focus) {

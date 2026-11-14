@@ -135,7 +135,9 @@
     required: ['options', 'note'],
     additionalProperties: false,
   };
-  const MAX_SEARCHES = 3;
+  // The prompt asks for at most 4; the cap is a little higher because going over it when search runs inside
+  // code execution (dynamic filtering) ends the whole run with an error and loses every result.
+  const MAX_SEARCHES = 6;
 
   // "Knoxville, TN" -> approximate location so search results are local.
   function userLocation(loc) {
@@ -169,43 +171,67 @@
     return [...urls];
   }
 
-  async function searchTurn(user, tool) {
-    let messages = [{ role: 'user', content: user }];
+  // Counts searches across every request in the turn (usage counts only one request each).
+  const searchesIn = resp => resp?.usage?.server_tool_use?.web_search_requests || 0;
+  // Search errors arrive inside a 200 response, e.g. max_uses_exceeded or too_many_requests.
+  function searchErrors(resp) {
+    const found = new Set();
+    JSON.stringify(resp.content).replace(/"error_code"\s*:\s*"([a-z_]+)"/g, (_, c) => found.add(c));
+    return [...found];
+  }
+
+  async function searchTurn(messages, tool, log) {
     let resp;
     // A long search turn can pause; send it back unchanged to let the server continue.
     for (let i = 0; i < 4; i++) {
-      resp = await send({ system: NT.prompts.OPTIONS_SYSTEM, messages, tools: [tool], output_config: { effort: 'low' } });
+      resp = await send({ system: NT.prompts.OPTIONS_SYSTEM, messages, tools: [tool], output_config: { effort: 'medium' } });
+      log.searches += searchesIn(resp);
+      log.responses.push(resp);
       if (resp.stop_reason !== 'pause_turn') break;
       messages = [...messages, { role: 'assistant', content: resp.content }];
     }
-    return resp;
+    return { resp, messages };
   }
 
   async function findOptions(person, me, mode, idea, focus) {
-    const tool = { type: 'web_search_20260209', name: 'web_search', max_uses: MAX_SEARCHES };
+    let tool = { type: 'web_search_20260209', name: 'web_search', max_uses: MAX_SEARCHES };
     const ul = userLocation(me.location || person.location);
     if (ul) tool.user_location = ul;
-    const user = NT.prompts.optionsRequest(person, me, mode, idea, focus);
+    const log = { searches: 0, responses: [] };
+    const first = [{ role: 'user', content: NT.prompts.optionsRequest(person, me, mode, idea, focus) }];
 
-    let resp;
+    let turn;
     try {
-      resp = await searchTurn(user, tool);
+      turn = await searchTurn(first, tool, log);
     } catch (err) {
       // Some models can't run search through code execution (dynamic filtering); call it directly instead.
       if (!/allowed_callers/.test(err.message || '')) throw err;
-      resp = await searchTurn(user, { ...tool, allowed_callers: ['direct'] });
+      tool = { ...tool, allowed_callers: ['direct'] };
+      turn = await searchTurn(first, tool, log);
     }
+
+    // If Claude answered without searching, push it once to actually search.
+    if (log.searches === 0) {
+      turn = await searchTurn([...turn.messages, { role: 'assistant', content: turn.resp.content },
+        { role: 'user', content: 'You did not use web search. Search the web now for real listings in the SEARCH AREA and DATE RANGE, then answer with the JSON.' }], tool, log);
+    }
+
+    const resp = turn.resp;
+    const errors = log.responses.flatMap(searchErrors);
+    console.info('[Find real options] searches:', log.searches, 'errors:', errors, 'responses:', log.responses);
+    const meta = { searches: log.searches, errors: [...new Set(errors)] };
 
     const text = textOf(resp);
     const parsed = parseOptions(text);
-    if (parsed) return parsed;
-    if (!text.trim()) throw new AIError('The search came back empty. Try again.');
+    if (parsed) return { ...parsed, ...meta };
+    if (!text.trim()) return { options: [], note: '', ...meta };
     const sources = sourcesOf(resp);
-    return structured(
+    const out = await structured(
       'Convert the search findings below into the JSON format. Use only what is written there; never add events, dates, prices or links. Use "" for anything unknown.',
       `${text}${sources.length ? `\n\nSource URLs:\n${sources.join('\n')}` : ''}`,
       OPTIONS_SCHEMA,
     );
+    return { ...out, ...meta };
   }
 
   async function suggestIdeas(person, me, mode, focus, avoid) {
