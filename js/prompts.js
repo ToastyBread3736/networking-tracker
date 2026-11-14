@@ -35,10 +35,12 @@ Always:
 - Use a mix of channels and effort levels.`;
 
   const DRAFT_RULES = `Message-writing rules:
+- If WRITING EXAMPLES are given, they come first. Copy the user's voice and length exactly, even when it breaks the defaults below. The only rule that still applies is never inventing facts.
 - Write as the user, in the first person, sounding like a real person. No clichés ("I hope this email finds you well", "I wanted to reach out").
-- Length: for MAINTAIN, 2–4 sentences. For BUILD, under 120 words, with one clear and easy ask (suggest a time or option, and make it easy to say no).
-- Mention something specific from the profile or idea, so it couldn't have been sent to anyone.
-- Use [square-bracket placeholders] for anything the user must fill in (an article link, a date, a detail you don't know). Never invent specifics.
+- Default length (when there are no examples): for MAINTAIN, 2–4 sentences. For BUILD with a PROFESSIONAL contact, under 120 words with one clear ask that is easy to say no to. To a FRIEND or PEER, one short line is usually enough.
+- The chosen idea's description is a plan for you, not text to include. Don't pack its details into the message.
+- Only add details the message needs. Don't explain, reassure ("no worries if not", "no pressure"), or pad.
+- Never invent specifics. If you don't know a detail (a place, a time), leave it out the way people do in real texts ("volleyball saturday?"). Use a [square-bracket placeholder] only when the message can't work without it, e.g. [article link].
 - Match the channel: email gets a subject line; LinkedIn messages and texts are shorter and have no subject.
 - To a FRIEND, write the way you'd text a friend: short, relaxed, lowercase is fine, no formal ask or sign-off.`;
 
@@ -107,15 +109,36 @@ Always:
     return { text: '', source: 'none' };
   }
 
+  function splitExamples(examples) {
+    return (examples || '').split(/^\s*---+\s*$/m).map(s => s.trim()).filter(Boolean);
+  }
+  const wordCount = s => s.split(/\s+/).filter(Boolean).length;
+
+  // Word limit taken from the user's own examples, so drafts can't come out longer than they really write.
+  function exampleWordLimit(examples) {
+    const parts = splitExamples(examples);
+    if (!parts.length) return 0;
+    return Math.max(6, Math.ceil(Math.max(...parts.map(wordCount)) * 1.2));
+  }
+
   function examplesBlock(examples) {
-    if (!examples) return '';
-    const parts = examples.split(/^\s*---+\s*$/m).map(s => s.trim()).filter(Boolean);
+    const parts = splitExamples(examples);
+    if (!parts.length) return '';
+    const counts = parts.map(wordCount);
+    const avg = Math.round(counts.reduce((a, b) => a + b, 0) / counts.length);
     const body = parts.map(s => `<example>\n${s}\n</example>`).join('\n');
-    return `\n\nWRITING EXAMPLES (messages the user actually wrote)\nMatch their voice: word choice, sentence length, greeting and sign-off style, punctuation, capitalization, emoji use, and overall length. Do NOT copy their content or facts; they are about other people and situations.\n${body}`;
+    return `\n\nWRITING EXAMPLES (messages the user actually wrote). This is the most important part of the request.
+Write the way these are written: the same length, word choice, slang, capitalization, punctuation (or lack of it), greetings or none, sign-offs or none, and emoji use. If the examples skip names, greetings, details, or reassurance, so do you. Do NOT copy their content; they are about other people and plans.
+These examples average ${avg} words (longest: ${Math.max(...counts)}).
+${body}`;
   }
 
   function draftRequest(p, me, mode, idea, tone, examples) {
-    return `${personContext(p, me, mode, '')}\n\nCHOSEN IDEA: ${ideaText(idea)}\nTONE: ${tone}${examplesBlock(examples)}\n\nWrite the message the user would send for this idea.`;
+    const limit = exampleWordLimit(examples);
+    const ending = limit
+      ? `Write the message the user would send for this idea, exactly in the style of the examples. Keep it to ${limit} words or fewer. Leave out anything the user wouldn't bother to type.`
+      : 'Write the message the user would send for this idea.';
+    return `${personContext(p, me, mode, '')}\n\nCHOSEN IDEA: ${ideaText(idea)}\nTONE: ${tone}${examplesBlock(examples)}\n\n${ending}`;
   }
 
   function draftCopyPrompt(p, me, mode, idea, tone, examples) {

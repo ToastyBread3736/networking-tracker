@@ -368,9 +368,18 @@
     $('#draft-body').value = '';
     $('#draft-examples-text').value = '';
     $('#draft-examples').open = false;
+    $('#draft-tone').value = defaultTone(p);
     updateExamplesSource();
     renderHistory(p);
     dlgIdeas.showModal();
+  }
+
+  // Pick the tone (and therefore the default examples) that fits the relationship. It can still be changed per draft.
+  function defaultTone(p) {
+    const rel = (p.relationship || '').toLowerCase();
+    if (/friend/.test(rel) || (/peer|classmate/.test(rel) && p.level >= 4)) return 'casual';
+    if (/professional|senior|mentor|manager|recruiter|professor|dr\b/.test(rel)) return 'professional';
+    return 'friendly';
   }
 
   // ---------- writing examples ----------
