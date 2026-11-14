@@ -103,6 +103,9 @@ main { padding: 8px 20px 40px; }
 .tags { display: flex; gap: 4px; }
 .tag { font-size: 11px; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); padding: 1px 7px; border-radius: 999px; cursor: pointer; }
 .tag:hover { color: var(--text); border-color: #3a4352; }
+.tags .tag { flex: none; }
+.tags .more { cursor: default; color: var(--text); }
+.tags.squeeze .tag:first-child { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .actions { display: flex; gap: 2px; justify-content: flex-end; }
 
 .empty { text-align: center; padding: 70px 20px; color: var(--muted); }

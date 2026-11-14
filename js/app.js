@@ -88,7 +88,6 @@
 
   function row(p) {
     const d = S.dueInfo(p);
-    const extra = p.tags.length - 3;
     return h('div', { class: 'row' },
       h('span', { class: `due ${d.status}`, title: d.dueDate ? `Next touchpoint: ${d.dueDate}` : 'No touchpoint logged yet' }, d.label),
       h('div', { class: 'who', title: 'Edit', onclick: () => openPerson(p.id) },
@@ -100,8 +99,8 @@
       h('span', { class: 'rel col-opt', title: p.relationship }, p.relationship || '—'),
       h('span', { class: `mode ${p.mode}` }, p.mode === 'build' ? 'Build' : 'Maintain'),
       h('span', { class: 'tags col-opt' },
-        p.tags.slice(0, 3).map(t => h('span', { class: 'tag', title: `Filter by #${t}`, onclick: () => setQuery('#' + t) }, t)),
-        extra > 0 ? h('span', { class: 'tag', title: p.tags.slice(3).join(', ') }, `+${extra}`) : null),
+        p.tags.map(t => h('span', { class: 'tag', 'data-t': t, title: `Filter by #${t}`, onclick: () => setQuery('#' + t) }, t)),
+        p.tags.length ? h('span', { class: 'tag more', hidden: true }) : null),
       h('div', { class: 'actions' },
         h('button', { class: 'ghost', title: 'Log a touchpoint', onclick: () => openLog(p.id) }, '✓'),
         h('button', { class: 'ghost', title: 'Ideas & drafts', onclick: () => openIdeas(p.id) }, '✦'),
@@ -122,6 +121,7 @@
       box.replaceChildren(h('div', { class: 'empty' }, h('p', {}, 'No one matches that search or filter.')));
     } else {
       box.replaceChildren(...list.map(row));
+      fitAllTags();
     }
     const overdue = people.filter(p => S.dueInfo(p).days < 0).length;
     const soon = people.filter(p => { const d = S.dueInfo(p).days; return d >= 0 && d <= 7; }).length;
@@ -130,6 +130,32 @@
       h('span', { class: overdue ? 'red' : '' }, h('b', {}, overdue), ' overdue'),
       h('span', { class: soon ? 'amber' : '' }, h('b', {}, soon), ' this week'));
   }
+
+  // Show as many whole tags as fit in the column, then "+N" (hover it to see the rest).
+  function fitTags(cell) {
+    const tags = [...cell.querySelectorAll('.tag[data-t]')];
+    const more = cell.querySelector('.more');
+    if (!more) return;
+    tags.forEach(t => (t.hidden = false));
+    more.hidden = true;
+    cell.classList.remove('squeeze');
+    if (!cell.clientWidth) return; // column hidden on narrow screens
+    let shown = tags.length;
+    while (cell.scrollWidth > cell.clientWidth + 1 && shown > 1) {
+      tags[--shown].hidden = true;
+      more.hidden = false;
+      more.textContent = `+${tags.length - shown}`;
+    }
+    more.title = tags.slice(shown).map(t => t.dataset.t).join(', ');
+    // A single tag that's still too long gets an ellipsis instead of being clipped.
+    if (cell.scrollWidth > cell.clientWidth + 1) cell.classList.add('squeeze');
+  }
+  function fitAllTags() { document.querySelectorAll('#list .tags').forEach(fitTags); }
+  let fitFrame;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(fitAllTags);
+  });
 
   function setQuery(q) { view.query = q; $('#search').value = q; render(); }
 
