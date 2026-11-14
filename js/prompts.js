@@ -76,12 +76,16 @@ Always:
     return lines.filter(l => l !== null).join('\n');
   }
 
-  function ideasRequest(p, me, mode, focus) {
-    return `${personContext(p, me, mode, focus)}\n\nSuggest 5 distinct touchpoint ideas for this contact.`;
+  // `avoid` lists ideas already shown for this person in the open dialog, so "Suggest" again gives new ones.
+  function ideasRequest(p, me, mode, focus, avoid = []) {
+    const seen = avoid.length
+      ? `\n\nALREADY SUGGESTED (the user wants different ones). Do not repeat these or give close variations. Suggest different activities or angles:\n${avoid.map(a => `- ${a}`).join('\n')}`
+      : '';
+    return `${personContext(p, me, mode, focus)}${seen}\n\nSuggest 5 distinct touchpoint ideas for this contact.`;
   }
 
-  function ideasCopyPrompt(p, me, mode, focus) {
-    return `${PLAYBOOK}\n\n${ideasRequest(p, me, mode, focus)}\n\nFor each idea give a short title, the channel, the effort (low/medium/high), 1–2 sentences on exactly what to do, and one line on why it fits this person. Number them 1–5.`;
+  function ideasCopyPrompt(p, me, mode, focus, avoid = []) {
+    return `${PLAYBOOK}\n\n${ideasRequest(p, me, mode, focus, avoid)}\n\nFor each idea give a short title, the channel, the effort (low/medium/high), 1–2 sentences on exactly what to do, and one line on why it fits this person. Number them 1–5.`;
   }
 
   function ideaText(idea) {

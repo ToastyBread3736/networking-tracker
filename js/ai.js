@@ -102,8 +102,8 @@
     catch { throw new AIError('Got an unexpected response format. Try again.'); }
   }
 
-  async function suggestIdeas(person, me, mode, focus) {
-    const out = await structured(NT.prompts.PLAYBOOK, NT.prompts.ideasRequest(person, me, mode, focus), IDEAS_SCHEMA);
+  async function suggestIdeas(person, me, mode, focus, avoid) {
+    const out = await structured(NT.prompts.PLAYBOOK, NT.prompts.ideasRequest(person, me, mode, focus, avoid), IDEAS_SCHEMA);
     return out.ideas || [];
   }
 

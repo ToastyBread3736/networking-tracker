@@ -264,7 +264,7 @@
 
   // ---------- ideas & drafts dialog ----------
   const dlgIdeas = $('#dlg-ideas');
-  const ideasState = { id: null, ideas: [], selected: null };
+  const ideasState = { id: null, ideas: [], selected: null, seen: [] };
 
   function currentMode() { return dlgIdeas.querySelector('input[name=ideasMode]:checked').value; }
   function chosenIdea() {
@@ -277,6 +277,8 @@
     const p = byId(id);
     if (!p) return;
     ideasState.id = id; ideasState.ideas = []; ideasState.selected = null;
+    ideasState.seen = []; // ideas shown since opening; cleared each time the dialog opens
+    $('#btn-gen-ideas').textContent = '✦ Suggest ideas';
     $('#ideas-name').textContent = fullName(p);
     const d = S.dueInfo(p);
     $('#ideas-sub').textContent = [
@@ -349,10 +351,13 @@
     const btn = $('#btn-gen-ideas'), st = $('#ideas-status');
     setBusy(btn, st, true, 'Thinking of ideas…');
     try {
-      ideasState.ideas = await NT.ai.suggestIdeas(p, S.getSettings(), currentMode(), $('#ideas-focus').value.trim());
+      ideasState.ideas = await NT.ai.suggestIdeas(p, S.getSettings(), currentMode(), $('#ideas-focus').value.trim(), ideasState.seen);
+      ideasState.seen.push(...ideasState.ideas.map(i => i.title));
+      ideasState.seen = ideasState.seen.slice(-40);
       ideasState.selected = null;
       renderIdeas();
       setBusy(btn, st, false);
+      btn.textContent = '✦ New ideas';
       st.textContent = 'Pick one, then draft a message.';
     } catch (err) {
       setBusy(btn, st, false);
@@ -362,7 +367,7 @@
 
   $('#btn-copy-ideas-prompt').addEventListener('click', () => {
     const p = byId(ideasState.id);
-    copy(NT.prompts.ideasCopyPrompt(p, S.getSettings(), currentMode(), $('#ideas-focus').value.trim()));
+    copy(NT.prompts.ideasCopyPrompt(p, S.getSettings(), currentMode(), $('#ideas-focus').value.trim(), ideasState.seen));
   });
 
   function needIdea(st) {
