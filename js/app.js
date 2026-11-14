@@ -361,7 +361,8 @@
 
   // ---------- ideas & drafts dialog ----------
   const dlgIdeas = $('#dlg-ideas');
-  const ideasState = { id: null, ideas: [], selected: null, seen: [] };
+  // options: real events/places found by web search for the chosen idea (optionsFor = which idea they belong to).
+  const ideasState = { id: null, ideas: [], selected: null, seen: [], options: [], note: '', option: null, optionsFor: null };
 
   function currentMode() { return dlgIdeas.querySelector('input[name=ideasMode]:checked').value; }
   function chosenIdea() {
@@ -388,6 +389,8 @@
     $('#ideas-custom').value = '';
     $('#ideas-list').replaceChildren();
     $('#ideas-status').replaceChildren();
+    clearOptions();
+    $('#options-box').hidden = true;
     $('#draft-status').replaceChildren();
     $('#draft-out').hidden = true;
     $('#draft-subject').value = '';
@@ -441,7 +444,82 @@
         h('span', { class: 'meta' }, `${idea.channel.replace('_', ' ')} · ${idea.effort} effort`),
         h('span', { class: 'd' }, idea.description),
         h('span', { class: 'w' }, idea.why))));
+    updateOptionsBox();
   }
+
+  // ---------- real options (web search) ----------
+  // Offered for ideas that involve going somewhere: in-person / other ideas, or one you typed yourself.
+  const canSearch = idea => !!idea && (typeof idea === 'string' || idea.channel === 'in_person' || idea.channel === 'other');
+  const ideaKey = idea => (typeof idea === 'string' ? 's:' + idea : 'i:' + idea.title);
+  const selectedOption = () => (ideasState.option != null ? ideasState.options[ideasState.option] : null);
+
+  function clearOptions() {
+    ideasState.options = []; ideasState.note = ''; ideasState.option = null; ideasState.optionsFor = null;
+    $('#options-list').replaceChildren();
+    $('#options-status').replaceChildren();
+  }
+
+  function updateOptionsBox() {
+    const idea = chosenIdea();
+    const show = canSearch(idea);
+    $('#options-box').hidden = !show;
+    // Options found for a different idea don't apply anymore.
+    if (ideasState.optionsFor && (!show || ideaKey(idea) !== ideasState.optionsFor)) clearOptions();
+  }
+
+  function renderOptions() {
+    const cards = ideasState.options.map((o, i) => {
+      const safeUrl = /^https?:\/\//i.test(o.url || '') ? o.url : null;
+      return h('div', {
+        class: 'option' + (i === ideasState.option ? ' selected' : ''),
+        role: 'button', tabindex: '0',
+        title: i === ideasState.option ? 'Click again to stop using this' : 'Use this in the draft',
+        onclick: e => {
+          if (e.target.closest('a')) return;
+          ideasState.option = ideasState.option === i ? null : i;
+          renderOptions();
+        },
+        onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } },
+      },
+        h('span', { class: 't' }, o.name),
+        safeUrl ? h('a', { href: safeUrl, target: '_blank', rel: 'noopener noreferrer' }, 'Check it ↗') : null,
+        h('span', { class: 'meta' }, [o.when, o.where, o.price].filter(Boolean).join(' · ') || 'Details not listed'),
+        o.why ? h('span', { class: 'w' }, o.why) : null);
+    });
+    $('#options-list').replaceChildren(...cards, ideasState.note ? h('p', { class: 'options-note' }, ideasState.note) : '');
+  }
+
+  $('#btn-find-options').addEventListener('click', async () => {
+    const p = byId(ideasState.id);
+    const idea = chosenIdea();
+    if (!canSearch(idea)) return;
+    const btn = $('#btn-find-options'), st = $('#options-status');
+    const key = ideaKey(idea);
+    setBusy(btn, st, true, 'Searching the web… (10–30 seconds)');
+    try {
+      const out = await NT.ai.findOptions(p, S.getSettings(), currentMode(), idea, $('#ideas-focus').value.trim());
+      setBusy(btn, st, false);
+      if (!chosenIdea() || ideaKey(chosenIdea()) !== key) return; // idea changed while searching
+      ideasState.options = (out.options || []).filter(o => o && o.name).slice(0, 4);
+      ideasState.note = out.note || '';
+      ideasState.option = null;
+      ideasState.optionsFor = key;
+      renderOptions();
+      st.textContent = ideasState.options.length
+        ? 'Click one to use it in your draft. Check the link before you invite anyone.'
+        : 'Nothing specific turned up. Try adding context above (a date, a city) and search again.';
+    } catch (err) {
+      setBusy(btn, st, false);
+      showError(st, err);
+    }
+  });
+
+  $('#btn-copy-options-prompt').addEventListener('click', () => {
+    const p = byId(ideasState.id);
+    const idea = chosenIdea();
+    if (!canSearch(idea)) return;
+    copy(NT.prompts.optionsCopyPrompt(p, S.getSettings(), currentMode(), idea, $('#ideas-focus').value.trim()));
+  });
 
   // Switching Build/Maintain here also updates the person's saved goal.
   $('#ideas-mode').addEventListener('change', () => {
@@ -457,6 +535,7 @@
   });
   $('#ideas-custom').addEventListener('input', () => {
     if ($('#ideas-custom').value.trim() && ideasState.selected != null) { ideasState.selected = null; renderIdeas(); }
+    else updateOptionsBox();
   });
 
   $('#btn-gen-ideas').addEventListener('click', async () => {
@@ -496,7 +575,7 @@
     if (!idea) return;
     setBusy(btn, st, true, 'Drafting…');
     try {
-      const out = await NT.ai.draftMessage(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value, currentExamples().text);
+      const out = await NT.ai.draftMessage(p, S.getSettings(), currentMode(), NT.prompts.ideaWithOption(idea, selectedOption()), $('#draft-tone').value, currentExamples().text);
       $('#draft-subject').value = out.subject || '';
       $('#draft-subject').hidden = !out.subject;
       $('#draft-body').value = out.body || '';
@@ -514,7 +593,7 @@
     const idea = needIdea($('#draft-status'));
     if (!idea) return;
     $('#draft-status').replaceChildren();
-    copy(NT.prompts.draftCopyPrompt(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value, currentExamples().text));
+    copy(NT.prompts.draftCopyPrompt(p, S.getSettings(), currentMode(), NT.prompts.ideaWithOption(idea, selectedOption()), $('#draft-tone').value, currentExamples().text));
   });
 
   $('#btn-copy-draft').addEventListener('click', () => {

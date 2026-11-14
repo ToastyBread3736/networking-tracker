@@ -148,6 +148,35 @@ ${body}`;
     return `${PLAYBOOK}\n\n${DRAFT_RULES}\n\n${draftRequest(p, me, mode, idea, tone, examples)}\nIf it's an email, start with "Subject: …". Output only the message.`;
   }
 
+  // ---------- finding real options on the web ----------
+  const OPTIONS_SYSTEM = `You find real, upcoming things the user can do with a contact, for a touchpoint idea they already picked. You have a web search tool.
+- Use at most 3 searches, and make them specific (activity + city + timeframe, e.g. "brass band concert Knoxville December 2026").
+- Only include options you actually found in search results, each with its source URL. Never invent events, dates, times, venues or prices. If a detail isn't in the results, use "".
+- Prefer dated events in the next 4 weeks near the user's location (and the contact's, if they live elsewhere). If no dated event fits, a regular venue or recurring activity (a weekly open gym, a bar with live music on Fridays) is fine.
+- Pick things this contact would actually enjoy, based on their interests, notes and relationship. 2 to 4 options.
+- "why" is one short line on why it fits this person.
+Your final answer must be ONLY this JSON, with no other text:
+{"options":[{"name":"","when":"","where":"","price":"","why":"","url":""}],"note":""}
+Use "note" for one short caveat (e.g. "couldn't find dated events; these are regular spots"), or "".`;
+
+  function optionsRequest(p, me, mode, idea, focus) {
+    return `${personContext(p, me, mode, focus)}\n\nCHOSEN IDEA: ${ideaText(idea)}\n\nFind 2–4 real, specific options for this idea.`;
+  }
+
+  function optionsCopyPrompt(p, me, mode, idea, focus) {
+    return `${OPTIONS_SYSTEM.replace(/Your final answer must be ONLY this JSON[\s\S]*$/, 'List each option with its name, date/time, place, price, a line on why it fits, and the link.')}\n\n${optionsRequest(p, me, mode, idea, focus)}`;
+  }
+
+  // Folds a picked real-world option into the idea so the draft can mention the actual event.
+  function ideaWithOption(idea, opt) {
+    if (!opt) return idea;
+    const details = [opt.name, opt.when, opt.where].filter(Boolean).join(' · ');
+    return `${ideaText(idea)}\nSPECIFIC PLAN (found online; mention it naturally and briefly, the way the user would): ${details}`;
+  }
+
   window.NT = window.NT || {};
-  NT.prompts = { PLAYBOOK, DRAFT_RULES, resolveExamples, ideasRequest, ideasCopyPrompt, draftRequest, draftCopyPrompt };
+  NT.prompts = {
+    PLAYBOOK, DRAFT_RULES, OPTIONS_SYSTEM, resolveExamples, ideasRequest, ideasCopyPrompt, draftRequest, draftCopyPrompt,
+    optionsRequest, optionsCopyPrompt, ideaWithOption,
+  };
 })();
