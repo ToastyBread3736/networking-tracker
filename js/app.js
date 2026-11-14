@@ -421,6 +421,13 @@
   $('#ideas-mode').addEventListener('change', () => {
     const p = byId(ideasState.id);
     if (p) { p.mode = currentMode(); persist(); }
+    // New goal, fresh start: forget earlier ideas so they're no longer avoided, and clear the old list.
+    ideasState.seen = [];
+    ideasState.ideas = [];
+    ideasState.selected = null;
+    renderIdeas();
+    $('#ideas-status').replaceChildren();
+    $('#btn-gen-ideas').textContent = '✦ Suggest ideas';
   });
   $('#ideas-custom').addEventListener('input', () => {
     if ($('#ideas-custom').value.trim() && ideasState.selected != null) { ideasState.selected = null; renderIdeas(); }

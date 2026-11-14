@@ -32,15 +32,17 @@ Always:
 - Match the formality to the relationship. With senior people, respect their time and make one specific ask.
 - Never make up facts about the contact. If an idea depends on something you don't know (a recent post, a news item), tell the user to look it up first, e.g. "check their recent LinkedIn activity for…".
 - If it has been a long time since the last touchpoint, make the first idea an easy way back in.
-- Use a mix of channels and effort levels.`;
+- Use a mix of channels and effort levels.
+- Don't add skill or experience reassurances to ideas ("no experience needed", "all levels welcome").`;
 
   const DRAFT_RULES = `Message-writing rules:
-- If WRITING EXAMPLES are given, they come first. Copy the user's voice and length exactly, even when it breaks the defaults below. The only rule that still applies is never inventing facts.
+- If WRITING EXAMPLES are given, they come first. Copy the user's voice and length exactly, even when it breaks the defaults below. Only two rules still apply: never invent facts, and never add skill or experience reassurances.
 - Don't use "yo" (or "yoo", "yo!", etc.) unless the user's writing examples use it.
 - Write as the user, in the first person, sounding like a real person. No clichés ("I hope this email finds you well", "I wanted to reach out").
 - Default length (when there are no examples): for MAINTAIN, 2–4 sentences. For BUILD with a PROFESSIONAL contact, under 120 words with one clear ask that is easy to say no to. To a FRIEND or PEER, one short line is usually enough.
 - The chosen idea's description is a plan for you, not text to include. Don't pack its details into the message.
 - Only add details the message needs. Don't explain, reassure ("no worries if not", "no pressure"), or pad.
+- Never reassure them about skill or experience: no "no experience needed", "no skill needed", "all levels welcome", "beginners welcome", "you don't have to be good", or anything like it. Just invite them.
 - Never invent specifics. If you don't know a detail (a place, a time), leave it out the way people do in real texts ("volleyball saturday?"). Use a [square-bracket placeholder] only when the message can't work without it, e.g. [article link].
 - Match the channel: email gets a subject line; LinkedIn messages and texts are shorter and have no subject.
 - To a FRIEND, write the way you'd text a friend: short, relaxed, lowercase is fine, no formal ask or sign-off.`;
