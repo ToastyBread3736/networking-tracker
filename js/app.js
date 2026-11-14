@@ -1,0 +1,426 @@
+// UI: list, add/edit, touchpoint logging, ideas & drafts, settings, import/export.
+(function () {
+  const S = NT.store;
+  const $ = sel => document.querySelector(sel);
+
+  let people = S.loadPeople();
+  const view = { query: '', filter: 'all', sort: 'due' };
+
+  // ---------- helpers ----------
+  function h(tag, attrs = {}, ...children) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === false || v == null) continue;
+      if (k === 'class') el.className = v;
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of children.flat()) if (c != null && c !== false) el.append(c instanceof Node ? c : String(c));
+    return el;
+  }
+  const fullName = p => [p.firstName, p.lastName].filter(Boolean).join(' ');
+  const byId = id => people.find(p => p.id === id);
+
+  function persist() { S.savePeople(people); render(); }
+
+  let toastTimer;
+  function toast(msg, action) {
+    const t = $('#toast');
+    t.replaceChildren(h('span', {}, msg));
+    if (action) t.append(h('button', { onclick: () => { action.fn(); t.hidden = true; } }, action.label));
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (t.hidden = true), action ? 6000 : 2500);
+  }
+
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const ta = h('textarea', { style: 'position:fixed;opacity:0' }); ta.value = text;
+      document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    toast('Copied to clipboard');
+  }
+
+  function setBusy(btn, statusEl, busy, msg = '') {
+    btn.disabled = busy;
+    statusEl.replaceChildren();
+    statusEl.classList.remove('error');
+    if (busy) statusEl.append(h('span', { class: 'spinner' }), msg);
+  }
+  function showError(statusEl, err) {
+    statusEl.replaceChildren(err.message || String(err));
+    statusEl.classList.add('error');
+  }
+
+  // ---------- list ----------
+  function matches(p, q) {
+    if (!q) return true;
+    if (q.startsWith('#')) return p.tags.some(t => t.startsWith(q.slice(1)));
+    const hay = [fullName(p), p.job, p.company, p.location, p.relationship, p.interests, p.notes, ...p.tags]
+      .join(' ').toLowerCase();
+    return q.split(/\s+/).every(w => hay.includes(w));
+  }
+
+  function visible() {
+    const q = view.query.trim().toLowerCase();
+    let list = people.filter(p => matches(p, q));
+    if (view.filter === 'overdue') list = list.filter(p => S.dueInfo(p).days < 0);
+    else if (view.filter === 'soon') list = list.filter(p => S.dueInfo(p).days <= 7);
+    else if (view.filter === 'build' || view.filter === 'maintain') list = list.filter(p => p.mode === view.filter);
+    const cmp = {
+      due: (a, b) => S.dueInfo(a).days - S.dueInfo(b).days,
+      name: (a, b) => fullName(a).localeCompare(fullName(b)),
+      level: (a, b) => b.level - a.level || fullName(a).localeCompare(fullName(b)),
+    }[view.sort];
+    return list.sort(cmp);
+  }
+
+  function row(p) {
+    const d = S.dueInfo(p);
+    const extra = p.tags.length - 3;
+    return h('div', { class: 'row' },
+      h('span', { class: `due ${d.status}`, title: d.dueDate ? `Next touchpoint: ${d.dueDate}` : 'No touchpoint logged yet' }, d.label),
+      h('div', { class: 'who', title: 'Edit', onclick: () => openPerson(p.id) },
+        h('span', { class: 'name' }, fullName(p)),
+        h('span', { class: 'job' }, [p.job, p.company].filter(Boolean).join(' · ') || '—')),
+      h('span', { class: 'loc col-opt', title: p.location }, p.location || '—'),
+      h('span', { class: 'level', title: `Level ${p.level}: ${S.LEVELS[p.level]}` },
+        [1, 2, 3, 4, 5].map(i => h('i', { class: i <= p.level ? 'on' : '' }))),
+      h('span', { class: 'rel col-opt', title: p.relationship }, p.relationship || '—'),
+      h('span', { class: `mode ${p.mode}` }, p.mode === 'build' ? 'Build' : 'Maintain'),
+      h('span', { class: 'tags col-opt' },
+        p.tags.slice(0, 3).map(t => h('span', { class: 'tag', title: `Filter by #${t}`, onclick: () => setQuery('#' + t) }, t)),
+        extra > 0 ? h('span', { class: 'tag', title: p.tags.slice(3).join(', ') }, `+${extra}`) : null),
+      h('div', { class: 'actions' },
+        h('button', { class: 'ghost', title: 'Log a touchpoint today', onclick: () => quickLog(p.id) }, '✓'),
+        h('button', { class: 'ghost', title: 'Ideas & drafts', onclick: () => openIdeas(p.id) }, '✦'),
+        h('button', { class: 'ghost', title: 'Edit', onclick: () => openPerson(p.id) }, '✎')),
+    );
+  }
+
+  function render() {
+    const list = visible();
+    const box = $('#list');
+    document.querySelector('.list-head').hidden = !list.length;
+    if (!people.length) {
+      box.replaceChildren(h('div', { class: 'empty' },
+        h('h2', {}, 'Your network starts here'),
+        h('p', {}, 'Add the people you want to stay in touch with. Each one gets a touchpoint schedule and AI-suggested ways to connect.'),
+        h('button', { class: 'primary', onclick: () => openPerson() }, '+ Add your first person')));
+    } else if (!list.length) {
+      box.replaceChildren(h('div', { class: 'empty' }, h('p', {}, 'No one matches that search or filter.')));
+    } else {
+      box.replaceChildren(...list.map(row));
+    }
+    const overdue = people.filter(p => S.dueInfo(p).days < 0).length;
+    const soon = people.filter(p => { const d = S.dueInfo(p).days; return d >= 0 && d <= 7; }).length;
+    $('#stats').replaceChildren(
+      h('span', {}, h('b', {}, people.length), ' people'),
+      h('span', { class: overdue ? 'red' : '' }, h('b', {}, overdue), ' overdue'),
+      h('span', { class: soon ? 'amber' : '' }, h('b', {}, soon), ' this week'));
+  }
+
+  function setQuery(q) { view.query = q; $('#search').value = q; render(); }
+
+  // ---------- touchpoints ----------
+  function logTouch(id, note) {
+    const p = byId(id);
+    if (!p) return;
+    const prev = { lastTouch: p.lastTouch, history: [...p.history] };
+    p.lastTouch = S.todayISO();
+    p.history = [...p.history, { date: p.lastTouch, note: note || 'Touchpoint' }].slice(-50);
+    p.updatedAt = new Date().toISOString();
+    persist();
+    toast(`Logged touchpoint with ${p.firstName}`, {
+      label: 'Undo',
+      fn: () => { Object.assign(p, prev); persist(); },
+    });
+  }
+  function quickLog(id) { logTouch(id, 'Touchpoint'); }
+
+  // ---------- add / edit dialog ----------
+  const dlgPerson = $('#dlg-person');
+  const fp = $('#form-person');
+  let editingId = null;
+  const PRESETS = ['14', '30', '60', '90', '180', '365'];
+
+  function updateLevelHint() {
+    const v = fp.querySelector('input[name=level]:checked')?.value || 3;
+    $('#level-hint').textContent = `${v} — ${S.LEVELS[v]}`;
+  }
+  function updateFreqCustom() {
+    const custom = fp.frequencyPreset.value === 'custom';
+    fp.frequencyCustom.hidden = !custom;
+    fp.frequencyCustom.required = custom;
+  }
+
+  function openPerson(id) {
+    editingId = id || null;
+    const p = id ? byId(id) : null;
+    fp.reset();
+    $('#person-title').textContent = p ? `Edit ${fullName(p)}` : 'Add person';
+    $('#btn-delete').hidden = !p;
+    const v = p || { level: 3, mode: 'build', frequencyDays: 90, lastTouch: S.todayISO(), tags: [] };
+    for (const k of ['firstName', 'lastName', 'job', 'company', 'location', 'email', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes']) {
+      fp.elements[k].value = v[k] || '';
+    }
+    fp.tags.value = (v.tags || []).join(', ');
+    fp.querySelector(`input[name=level][value="${v.level}"]`).checked = true;
+    fp.querySelector(`input[name=mode][value="${v.mode}"]`).checked = true;
+    const f = String(v.frequencyDays);
+    fp.frequencyPreset.value = PRESETS.includes(f) ? f : 'custom';
+    fp.frequencyCustom.value = PRESETS.includes(f) ? '' : f;
+    updateFreqCustom();
+    updateLevelHint();
+    dlgPerson.showModal();
+    fp.firstName.focus();
+  }
+
+  fp.addEventListener('change', e => {
+    if (e.target.name === 'level') updateLevelHint();
+    if (e.target.name === 'frequencyPreset') updateFreqCustom();
+  });
+
+  fp.addEventListener('submit', e => {
+    e.preventDefault();
+    const fd = new FormData(fp);
+    const raw = Object.fromEntries(fd.entries());
+    raw.frequencyDays = raw.frequencyPreset === 'custom' ? raw.frequencyCustom : raw.frequencyPreset;
+    const existing = editingId ? byId(editingId) : null;
+    if (existing) {
+      raw.id = existing.id; raw.createdAt = existing.createdAt; raw.history = existing.history;
+    }
+    const p = S.normalize(raw);
+    if (!p) return;
+    if (existing) people[people.indexOf(existing)] = p;
+    else people.push(p);
+    persist();
+    dlgPerson.close();
+    toast(existing ? 'Saved' : `Added ${p.firstName}`);
+  });
+
+  $('#btn-delete').addEventListener('click', () => {
+    const p = byId(editingId);
+    if (!p) return;
+    const idx = people.indexOf(p);
+    people.splice(idx, 1);
+    persist();
+    dlgPerson.close();
+    toast(`Deleted ${fullName(p)}`, { label: 'Undo', fn: () => { people.splice(idx, 0, p); persist(); } });
+  });
+
+  // ---------- ideas & drafts dialog ----------
+  const dlgIdeas = $('#dlg-ideas');
+  const ideasState = { id: null, ideas: [], selected: null };
+
+  function currentMode() { return dlgIdeas.querySelector('input[name=ideasMode]:checked').value; }
+  function chosenIdea() {
+    const custom = $('#ideas-custom').value.trim();
+    if (custom) return custom;
+    return ideasState.selected != null ? ideasState.ideas[ideasState.selected] : null;
+  }
+
+  function openIdeas(id) {
+    const p = byId(id);
+    if (!p) return;
+    ideasState.id = id; ideasState.ideas = []; ideasState.selected = null;
+    $('#ideas-name').textContent = fullName(p);
+    const d = S.dueInfo(p);
+    $('#ideas-sub').textContent = [
+      [p.job, p.company].filter(Boolean).join(' at '),
+      p.relationship, `Level ${p.level}`,
+      `last touch ${S.sinceLabel(p)}`, d.label.toLowerCase(),
+    ].filter(Boolean).join(' · ');
+    dlgIdeas.querySelector(`input[name=ideasMode][value="${p.mode}"]`).checked = true;
+    $('#ideas-focus').value = '';
+    $('#ideas-custom').value = '';
+    $('#ideas-list').replaceChildren();
+    $('#ideas-status').replaceChildren();
+    $('#draft-status').replaceChildren();
+    $('#draft-out').hidden = true;
+    $('#draft-subject').value = '';
+    $('#draft-body').value = '';
+    renderHistory(p);
+    dlgIdeas.showModal();
+  }
+
+  function renderHistory(p) {
+    $('#history-section').hidden = !p.history.length;
+    $('#history-list').replaceChildren(...p.history.slice(-5).reverse().map(x =>
+      h('li', {}, h('span', {}, x.date), x.note)));
+  }
+
+  function renderIdeas() {
+    $('#ideas-list').replaceChildren(...ideasState.ideas.map((idea, i) =>
+      h('button', {
+        class: 'idea' + (i === ideasState.selected ? ' selected' : ''),
+        onclick: () => { ideasState.selected = i; $('#ideas-custom').value = ''; renderIdeas(); },
+      },
+        h('span', { class: 't' }, idea.title),
+        h('span', { class: 'meta' }, `${idea.channel.replace('_', ' ')} · ${idea.effort} effort`),
+        h('span', { class: 'd' }, idea.description),
+        h('span', { class: 'w' }, idea.why))));
+  }
+
+  // Switching Build/Maintain here also updates the person's saved goal.
+  $('#ideas-mode').addEventListener('change', () => {
+    const p = byId(ideasState.id);
+    if (p) { p.mode = currentMode(); persist(); }
+  });
+  $('#ideas-custom').addEventListener('input', () => {
+    if ($('#ideas-custom').value.trim() && ideasState.selected != null) { ideasState.selected = null; renderIdeas(); }
+  });
+
+  $('#btn-gen-ideas').addEventListener('click', async () => {
+    const p = byId(ideasState.id);
+    const btn = $('#btn-gen-ideas'), st = $('#ideas-status');
+    setBusy(btn, st, true, 'Thinking of ideas…');
+    try {
+      ideasState.ideas = await NT.ai.suggestIdeas(p, S.getSettings(), currentMode(), $('#ideas-focus').value.trim());
+      ideasState.selected = null;
+      renderIdeas();
+      setBusy(btn, st, false);
+      st.textContent = 'Pick one, then draft a message.';
+    } catch (err) {
+      setBusy(btn, st, false);
+      showError(st, err);
+    }
+  });
+
+  $('#btn-copy-ideas-prompt').addEventListener('click', () => {
+    const p = byId(ideasState.id);
+    copy(NT.prompts.ideasCopyPrompt(p, S.getSettings(), currentMode(), $('#ideas-focus').value.trim()));
+  });
+
+  function needIdea(st) {
+    const idea = chosenIdea();
+    if (!idea) { showError(st, new Error('Pick an idea above or type your own first.')); return null; }
+    return idea;
+  }
+
+  $('#btn-draft').addEventListener('click', async () => {
+    const p = byId(ideasState.id);
+    const btn = $('#btn-draft'), st = $('#draft-status');
+    const idea = needIdea(st);
+    if (!idea) return;
+    setBusy(btn, st, true, 'Drafting…');
+    try {
+      const out = await NT.ai.draftMessage(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value);
+      $('#draft-subject').value = out.subject || '';
+      $('#draft-subject').hidden = !out.subject;
+      $('#draft-body').value = out.body || '';
+      $('#draft-out').hidden = false;
+      setBusy(btn, st, false);
+      st.textContent = 'Edit as needed, then copy and send.';
+    } catch (err) {
+      setBusy(btn, st, false);
+      showError(st, err);
+    }
+  });
+
+  $('#btn-copy-draft-prompt').addEventListener('click', () => {
+    const p = byId(ideasState.id);
+    const idea = needIdea($('#draft-status'));
+    if (!idea) return;
+    $('#draft-status').replaceChildren();
+    copy(NT.prompts.draftCopyPrompt(p, S.getSettings(), currentMode(), idea, $('#draft-tone').value));
+  });
+
+  $('#btn-copy-draft').addEventListener('click', () => {
+    const subj = $('#draft-subject').value.trim();
+    const body = $('#draft-body').value;
+    copy(subj && !$('#draft-subject').hidden ? `Subject: ${subj}\n\n${body}` : body);
+  });
+
+  $('#btn-log-sent').addEventListener('click', () => {
+    const idea = chosenIdea();
+    const note = idea ? (typeof idea === 'string' ? idea : idea.title) : 'Sent message';
+    logTouch(ideasState.id, note);
+    renderHistory(byId(ideasState.id));
+    dlgIdeas.close();
+  });
+
+  // ---------- settings ----------
+  const dlgSettings = $('#dlg-settings');
+  const fs = $('#form-settings');
+  $('#btn-settings').addEventListener('click', () => {
+    const s = S.getSettings();
+    for (const k of ['name', 'location', 'role', 'interests', 'bio', 'apiKey', 'model']) fs.elements[k].value = s[k] || '';
+    dlgSettings.showModal();
+  });
+  fs.addEventListener('submit', e => {
+    e.preventDefault();
+    const raw = Object.fromEntries(new FormData(fs).entries());
+    for (const k in raw) raw[k] = raw[k].trim();
+    S.saveSettings(raw);
+    dlgSettings.close();
+    toast('Settings saved');
+  });
+
+  // ---------- export / import ----------
+  $('#btn-export').addEventListener('click', () => {
+    const blob = new Blob([S.exportJSON(people)], { type: 'application/json' });
+    const a = h('a', { href: URL.createObjectURL(blob), download: `network-${S.todayISO()}.json` });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    toast(`Exported ${people.length} people`);
+  });
+
+  const dlgImport = $('#dlg-import');
+  let pendingImport = null;
+  $('#btn-import').addEventListener('click', () => $('#import-file').click());
+  $('#import-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      pendingImport = S.parseImport(await file.text());
+    } catch (err) {
+      toast('Import failed: ' + err.message);
+      return;
+    }
+    const n = pendingImport.people.length;
+    const existing = new Set(people.map(p => p.id));
+    const updates = pendingImport.people.filter(p => existing.has(p.id)).length;
+    $('#import-summary').textContent =
+      `${n} people found in ${file.name} (${n - updates} new, ${updates} matching existing)` +
+      (pendingImport.skipped ? `; ${pendingImport.skipped} skipped for missing a first name.` : '.');
+    dlgImport.showModal();
+  });
+
+  function finishImport(replace) {
+    if (!pendingImport) return;
+    const incoming = pendingImport.people;
+    if (replace) people = incoming;
+    else {
+      const map = new Map(people.map(p => [p.id, p]));
+      for (const p of incoming) map.set(p.id, p);
+      people = [...map.values()];
+    }
+    // Restore "About you" if this browser doesn't have it yet.
+    const s = S.getSettings();
+    if (pendingImport.me && !s.name) S.saveSettings({ ...s, ...pendingImport.me, apiKey: s.apiKey, model: s.model });
+    persist();
+    dlgImport.close();
+    toast(`Imported ${incoming.length} people`);
+    pendingImport = null;
+  }
+  $('#btn-import-merge').addEventListener('click', () => finishImport(false));
+  $('#btn-import-replace').addEventListener('click', () => finishImport(true));
+
+  // ---------- wiring ----------
+  document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+  $('#btn-add').addEventListener('click', () => openPerson());
+  $('#search').addEventListener('input', e => { view.query = e.target.value; render(); });
+  $('#filter').addEventListener('change', e => { view.filter = e.target.value; render(); });
+  $('#sort').addEventListener('change', e => { view.sort = e.target.value; render(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && !e.target.closest('input, textarea, select, dialog')) { e.preventDefault(); $('#search').focus(); }
+    if (e.key === 'n' && !e.target.closest('input, textarea, select, dialog')) { e.preventDefault(); openPerson(); }
+  });
+  // Re-render at midnight-ish so "due" labels stay current if the tab stays open.
+  setInterval(render, 60 * 60 * 1000);
+
+  render();
+})();

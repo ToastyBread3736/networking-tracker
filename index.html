@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Network Tracker</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Network</h1>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search name, job, tag, city…" autocomplete="off">
+      <select id="filter" aria-label="Filter">
+        <option value="all">All</option>
+        <option value="overdue">Overdue</option>
+        <option value="soon">Due in 7 days</option>
+        <option value="build">Building</option>
+        <option value="maintain">Maintaining</option>
+      </select>
+      <select id="sort" aria-label="Sort">
+        <option value="due">Next touch</option>
+        <option value="name">Name</option>
+        <option value="level">Level</option>
+      </select>
+      <button id="btn-add" class="primary">+ Add person</button>
+      <button id="btn-import" title="Import JSON">Import</button>
+      <button id="btn-export" title="Export JSON">Export</button>
+      <button id="btn-settings" class="icon" title="Settings" aria-label="Settings">⚙</button>
+      <input id="import-file" type="file" accept=".json,application/json" hidden>
+    </div>
+  </header>
+
+  <main>
+    <div class="list-head" aria-hidden="true">
+      <span>Next</span><span>Person</span><span class="col-opt">Location</span><span>Level</span>
+      <span class="col-opt">Relationship</span><span>Goal</span><span class="col-opt">Tags</span><span></span>
+    </div>
+    <div id="list" class="list"></div>
+  </main>
+
+  <!-- Add / edit person -->
+  <dialog id="dlg-person">
+    <form id="form-person" method="dialog">
+      <h2 id="person-title">Add person</h2>
+      <div class="grid">
+        <label>First name *<input name="firstName" required></label>
+        <label>Last name<input name="lastName"></label>
+        <label>Job title<input name="job" placeholder="Senior PM"></label>
+        <label>Company / org<input name="company" placeholder="Microsoft"></label>
+        <label>Location<input name="location" placeholder="Knoxville, TN"></label>
+        <label>Tags<input name="tags" placeholder="product, alumni, volleyball"></label>
+        <label>Nature of relationship
+          <input name="relationship" list="relationship-options" placeholder="Pick or type">
+        </label>
+        <label>Last touchpoint<input name="lastTouch" type="date"></label>
+        <label>Touchpoint frequency
+          <span class="inline">
+            <select name="frequencyPreset">
+              <option value="14">Every 2 weeks</option>
+              <option value="30">Monthly</option>
+              <option value="60">Every 2 months</option>
+              <option value="90" selected>Quarterly</option>
+              <option value="180">Every 6 months</option>
+              <option value="365">Yearly</option>
+              <option value="custom">Custom…</option>
+            </select>
+            <input name="frequencyCustom" type="number" min="1" max="3650" placeholder="days" hidden>
+          </span>
+        </label>
+        <label>Email<input name="email" type="email"></label>
+        <label class="full">LinkedIn URL<input name="linkedin" type="url" placeholder="https://linkedin.com/in/…"></label>
+        <fieldset class="full">
+          <legend>Level of connection</legend>
+          <div class="segmented" id="level-seg">
+            <label><input type="radio" name="level" value="1"><span>1</span></label>
+            <label><input type="radio" name="level" value="2"><span>2</span></label>
+            <label><input type="radio" name="level" value="3" checked><span>3</span></label>
+            <label><input type="radio" name="level" value="4"><span>4</span></label>
+            <label><input type="radio" name="level" value="5"><span>5</span></label>
+          </div>
+          <small id="level-hint" class="muted"></small>
+        </fieldset>
+        <fieldset class="full">
+          <legend>Goal</legend>
+          <div class="segmented two">
+            <label><input type="radio" name="mode" value="build" checked><span>Build</span></label>
+            <label><input type="radio" name="mode" value="maintain"><span>Maintain</span></label>
+          </div>
+        </fieldset>
+        <label class="full">Interests / hobbies
+          <input name="interests" placeholder="volleyball, AI policy, hiking, coffee">
+        </label>
+        <label class="full">Notes
+          <textarea name="notes" rows="3" placeholder="How you met, what they're working on, things they mentioned…"></textarea>
+        </label>
+      </div>
+      <div class="dlg-actions">
+        <button type="button" id="btn-delete" class="danger" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button type="button" data-close>Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <datalist id="relationship-options">
+    <option value="Peer"></option>
+    <option value="Professional / Senior"></option>
+    <option value="Mentor"></option>
+    <option value="Mentee"></option>
+    <option value="Manager"></option>
+    <option value="Recruiter"></option>
+    <option value="Classmate"></option>
+    <option value="Professor"></option>
+    <option value="Alumni"></option>
+    <option value="Friend"></option>
+    <option value="Other"></option>
+  </datalist>
+
+  <!-- Ideas + drafts -->
+  <dialog id="dlg-ideas" class="wide">
+    <div class="ideas-wrap">
+      <div class="ideas-head">
+        <div>
+          <h2 id="ideas-name"></h2>
+          <div id="ideas-sub" class="muted"></div>
+        </div>
+        <div class="segmented two small" id="ideas-mode">
+          <label><input type="radio" name="ideasMode" value="build"><span>Build</span></label>
+          <label><input type="radio" name="ideasMode" value="maintain"><span>Maintain</span></label>
+        </div>
+      </div>
+
+      <section>
+        <label>Extra context (optional)
+          <input id="ideas-focus" placeholder="e.g. they just got promoted · I'm in Seattle next month · want advice on PM internships">
+        </label>
+        <div class="row-btns">
+          <button id="btn-gen-ideas" class="primary">✦ Suggest ideas</button>
+          <button id="btn-copy-ideas-prompt">Copy prompt</button>
+          <span id="ideas-status" class="muted"></span>
+        </div>
+        <div id="ideas-list" class="ideas-list"></div>
+        <label class="custom-idea">Or use your own idea
+          <input id="ideas-custom" placeholder="e.g. invite them to Saturday volleyball">
+        </label>
+      </section>
+
+      <section id="draft-section">
+        <div class="row-btns">
+          <select id="draft-tone" aria-label="Tone">
+            <option value="friendly">Friendly</option>
+            <option value="professional">Professional</option>
+            <option value="casual">Casual</option>
+          </select>
+          <button id="btn-draft" class="primary">✉ Draft message</button>
+          <button id="btn-copy-draft-prompt">Copy prompt</button>
+          <span id="draft-status" class="muted"></span>
+        </div>
+        <div id="draft-out" hidden>
+          <input id="draft-subject" placeholder="Subject">
+          <textarea id="draft-body" rows="8"></textarea>
+          <div class="row-btns">
+            <button id="btn-copy-draft">Copy message</button>
+            <button id="btn-log-sent" class="primary">✓ Sent — log touchpoint</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="history-section" hidden>
+        <h3>Recent touchpoints</h3>
+        <ul id="history-list" class="history"></ul>
+      </section>
+
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button type="button" data-close>Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog id="dlg-settings">
+    <form id="form-settings" method="dialog">
+      <h2>Settings</h2>
+      <h3>About you <small class="muted">— used to personalize ideas and drafts</small></h3>
+      <div class="grid">
+        <label>Your name<input name="name"></label>
+        <label>Your location<input name="location" placeholder="Knoxville, TN"></label>
+        <label class="full">Role / school<input name="role" placeholder="CS student at UT Knoxville"></label>
+        <label class="full">Your interests<input name="interests" placeholder="volleyball, ML, startups"></label>
+        <label class="full">Goals / anything the AI should know
+          <textarea name="bio" rows="2" placeholder="Looking for a PM internship for summer 2027…"></textarea>
+        </label>
+      </div>
+      <h3>AI</h3>
+      <div class="grid">
+        <label class="full">Claude API key
+          <input name="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
+        </label>
+        <label class="full">Model
+          <select name="model">
+            <option value="claude-opus-5-5">Claude Opus 5.5 — best quality (~2–3¢ per request)</option>
+            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 — balanced (~1¢)</option>
+            <option value="claude-haiku-5-5">Claude Haiku 5.5 — cheapest (&lt;0.1¢)</option>
+          </select>
+        </label>
+      </div>
+      <p class="muted small">Your key is stored only in this browser (localStorage) and sent only to api.anthropic.com. It is never included in exports. Get one at console.anthropic.com. Without a key, use the "Copy prompt" buttons and paste into claude.ai.</p>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button type="button" data-close>Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Import choice -->
+  <dialog id="dlg-import">
+    <h2>Import contacts</h2>
+    <p id="import-summary"></p>
+    <p class="muted small"><b>Merge</b> adds new people and updates matching ones. <b>Replace</b> deletes everything currently stored first.</p>
+    <div class="dlg-actions">
+      <button type="button" data-close>Cancel</button>
+      <span class="spacer"></span>
+      <button type="button" id="btn-import-replace" class="danger">Replace all</button>
+      <button type="button" id="btn-import-merge" class="primary">Merge</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <!-- Plain scripts (not modules) so the app works when opened straight from disk via file:// -->
+  <script src="js/store.js"></script>
+  <script src="js/prompts.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
