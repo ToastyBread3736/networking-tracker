@@ -100,6 +100,7 @@
       orgs,
       location: str(raw.location, 150),
       email: str(raw.email, 200),
+      phone: str(raw.phone, 40),
       linkedin: str(raw.linkedin, 300),
       tags,
       level,

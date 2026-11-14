@@ -57,7 +57,7 @@
   function matches(p, q) {
     if (!q) return true;
     if (q.startsWith('#')) return p.tags.some(t => t.startsWith(q.slice(1)));
-    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...p.orgs.flatMap(o => [o.name, o.role]), p.location, p.relationship, p.interests, p.notes, ...p.tags, ...p.history.flatMap(x => [x.type, x.note])]
+    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...p.orgs.flatMap(o => [o.name, o.role]), p.location, p.relationship, p.interests, p.notes, p.email, p.phone, ...p.tags, ...p.history.flatMap(x => [x.type, x.note])]
       .join(' ').toLowerCase();
     return q.split(/\s+/).every(w => hay.includes(w));
   }
@@ -303,7 +303,7 @@
     $('#person-title').textContent = p ? `Edit ${fullName(p)}` : 'Add person';
     $('#btn-delete').hidden = !p;
     const v = p || { level: 3, mode: 'build', frequencyDays: 90, lastTouch: S.todayISO(), tags: [] };
-    for (const k of ['firstName', 'lastName', 'location', 'email', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes']) {
+    for (const k of ['firstName', 'lastName', 'location', 'email', 'phone', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes']) {
       fp.elements[k].value = v[k] || '';
     }
     fillRepeat(REPEAT.jobs, v.jobs);
