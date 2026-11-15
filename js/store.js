@@ -2,10 +2,11 @@
 (function () {
   const PEOPLE_KEY = 'nt.people.v1';
   const SETTINGS_KEY = 'nt.settings.v1';
+  const GOAL_RANK_KEY = 'nt.goalrank.v1';
   const DAY = 86400000;
 
   const DEFAULT_SETTINGS = {
-    name: '', location: '', role: '', interests: '', bio: '',
+    name: '', location: '', role: '', interests: '', goal: '', bio: '',
     exFriendly: '', exProfessional: '', exCasual: '', // default writing examples per tone
     resume: '', // plain text, extracted from an uploaded PDF/TXT or pasted
     apiKey: '', model: 'claude-opus-5-5',
@@ -135,6 +136,22 @@
     localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...DEFAULT_SETTINGS, ...s }));
   }
 
+  // ---------- goal ranking cache ----------
+  // { goal, scores: { [personId]: { score, reason, sig } } }. `sig` is a hash of what was sent for that person,
+  // so only new or edited people need ranking again. A different goal makes every score stale.
+  function loadGoalRank() {
+    try {
+      const r = JSON.parse(localStorage.getItem(GOAL_RANK_KEY) || '{}');
+      return { goal: typeof r.goal === 'string' ? r.goal : '', scores: r.scores && typeof r.scores === 'object' ? r.scores : {} };
+    } catch { return { goal: '', scores: {} }; }
+  }
+  function saveGoalRank(r) { localStorage.setItem(GOAL_RANK_KEY, JSON.stringify(r)); }
+  function hash(s) {
+    let x = 5381;
+    for (let i = 0; i < s.length; i++) x = ((x << 5) + x + s.charCodeAt(i)) | 0;
+    return (x >>> 0).toString(36);
+  }
+
   // ---------- export / import ----------
   function exportJSON(people) {
     const { apiKey, model, ...me } = getSettings(); // never export the API key
@@ -161,5 +178,6 @@
   NT.store = {
     LEVELS, uid, jobLabel, orgLabel, todayISO, dueInfo, sinceLabel, normalize,
     loadPeople, savePeople, getSettings, saveSettings, exportJSON, parseImport,
+    loadGoalRank, saveGoalRank, hash,
   };
 })();

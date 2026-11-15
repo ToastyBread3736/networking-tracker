@@ -25,6 +25,7 @@
         <option value="due">Next touch</option>
         <option value="name">Name</option>
         <option value="level">Level</option>
+        <option value="goal">Goal relevance</option>
       </select>
       <button id="btn-add" class="primary">+ Add person</button>
       <button id="btn-import" title="Import JSON">Import</button>
@@ -35,6 +36,7 @@
   </header>
 
   <main>
+    <div id="goal-bar" class="goal-bar" hidden></div>
     <div class="list-head" aria-hidden="true">
       <span>Next</span><span>Person</span><span class="col-opt">Location</span><span>Level</span>
       <span class="col-opt">Relationship</span><span>Goal</span><span class="col-opt">Tags</span><span></span>
@@ -260,6 +262,9 @@
         <label>Your location<input name="location" placeholder="Knoxville, TN"></label>
         <label class="full">Role / school<input name="role" placeholder="CS student at UT Knoxville"></label>
         <label class="full">Your interests<input name="interests" placeholder="volleyball, ML, startups"></label>
+        <label class="full">Current goal <small class="muted">— used by "Sort: Goal relevance"</small>
+          <input name="goal" maxlength="200" placeholder="Summer 2027 internship in nuclear detection">
+        </label>
         <label class="full">Goals / anything the AI should know
           <textarea name="bio" rows="2" placeholder="Looking for a PM internship for summer 2027…"></textarea>
         </label>

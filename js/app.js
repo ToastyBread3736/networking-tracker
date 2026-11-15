@@ -68,7 +68,9 @@
     if (view.filter === 'overdue') list = list.filter(p => S.dueInfo(p).days < 0);
     else if (view.filter === 'soon') list = list.filter(p => S.dueInfo(p).days <= 7);
     else if (view.filter === 'build' || view.filter === 'maintain') list = list.filter(p => p.mode === view.filter);
+    const score = p => goalView.scores.get(p.id)?.score ?? -1; // unranked people go last
     const cmp = {
+      goal: (a, b) => score(b) - score(a) || S.dueInfo(a).days - S.dueInfo(b).days,
       due: (a, b) => S.dueInfo(a).days - S.dueInfo(b).days,
       name: (a, b) => fullName(a).localeCompare(fullName(b)),
       level: (a, b) => b.level - a.level || fullName(a).localeCompare(fullName(b)),
@@ -86,13 +88,25 @@
     return [...p.jobs.map(j => S.jobLabel(j)), ...p.orgs.map(S.orgLabel)].join('\n');
   }
 
+  // In the goal sort, a score badge sits next to the name and the reason replaces the job line (roles stay in its tooltip).
+  function goalBadge(p) {
+    if (view.sort !== 'goal' || !goalView.goal) return null;
+    const g = goalView.scores.get(p.id);
+    if (!g) return h('span', { class: 'goal-score', title: 'Not ranked for this goal yet' }, '–');
+    const tier = g.score >= 70 ? 'high' : g.score >= 40 ? 'mid' : '';
+    return h('span', { class: `goal-score ${tier}`, title: `Goal relevance ${g.score}/100: ${g.reason}` }, g.score);
+  }
+
   function row(p) {
     const d = S.dueInfo(p);
+    const g = view.sort === 'goal' ? goalView.scores.get(p.id) : null;
     return h('div', { class: 'row' },
       h('span', { class: `due ${d.status}`, title: d.dueDate ? `Next touchpoint: ${d.dueDate}` : 'No touchpoint logged yet' }, d.label),
       h('div', { class: 'who', title: 'Edit', onclick: () => openPerson(p.id) },
-        h('span', { class: 'name' }, fullName(p)),
-        h('span', { class: 'job', title: allRoles(p) }, subtitle(p))),
+        h('span', { class: 'name' }, fullName(p), goalBadge(p)),
+        g && g.reason
+          ? h('span', { class: 'job reason', title: `${g.reason}\n\n${allRoles(p)}` }, g.reason)
+          : h('span', { class: 'job', title: allRoles(p) }, subtitle(p))),
       h('span', { class: 'loc col-opt', title: p.location }, p.location || '—'),
       h('span', { class: 'level', title: `Level ${p.level}: ${S.LEVELS[p.level]}` },
         [1, 2, 3, 4, 5].map(i => h('i', { class: i <= p.level ? 'on' : '' }))),
@@ -108,7 +122,77 @@
     );
   }
 
+  // ---------- goal relevance ----------
+  let goalView = { goal: '', scores: new Map() };
+  let ranking = false;
+  let rankMsg = null; // { text, error }
+
+  // Saved scores that still apply: same goal, and the person's profile hasn't changed since they were scored.
+  function computeGoalView() {
+    const goal = NT.prompts.goalOf(S.getSettings());
+    const r = S.loadGoalRank();
+    const scores = new Map();
+    if (goal && r.goal === goal) {
+      for (const p of people) {
+        const e = r.scores[p.id];
+        if (e && e.sig === S.hash(NT.prompts.rankSummary(p))) scores.set(p.id, e);
+      }
+    }
+    return { goal, scores };
+  }
+
+  function renderGoalBar() {
+    const bar = $('#goal-bar');
+    bar.hidden = view.sort !== 'goal' || !people.length;
+    if (bar.hidden) return;
+    if (!goalView.goal) {
+      bar.replaceChildren(
+        h('span', { class: 'goal-text' }, 'Add a current goal in Settings to rank people by it.'),
+        h('button', { type: 'button', onclick: () => $('#btn-settings').click() }, 'Open Settings'));
+      return;
+    }
+    const ranked = goalView.scores.size;
+    const todo = people.length - ranked;
+    const label = !todo ? 'Re-rank all' : ranked ? `Rank ${todo} new or edited` : `Rank ${todo} ${todo === 1 ? 'person' : 'people'}`;
+    bar.replaceChildren(
+      h('div', { class: 'goal-text', title: goalView.goal }, h('span', { class: 'muted' }, 'Goal: '), goalView.goal),
+      h('span', { class: 'muted small goal-count' }, `${ranked} of ${people.length} ranked`),
+      h('button', { type: 'button', class: todo ? 'primary' : null, disabled: ranking, onclick: () => rankGoal(todo ? 'new' : 'all') }, label));
+    if (rankMsg) bar.append(h('span', { class: 'small' + (rankMsg.error ? ' error' : '') }, ranking ? h('span', { class: 'spinner' }) : null, rankMsg.text));
+  }
+
+  async function rankGoal(which) {
+    const me = S.getSettings();
+    const goal = NT.prompts.goalOf(me);
+    if (!goal || ranking) return;
+    const todo = which === 'all' ? people.slice() : people.filter(p => !goalView.scores.has(p.id));
+    if (!todo.length) return;
+    ranking = true;
+    rankMsg = { text: `Ranking ${todo.length} ${todo.length === 1 ? 'person' : 'people'}…` };
+    renderGoalBar();
+    try {
+      const res = await NT.ai.rankByGoal(todo, me, (done, total) => {
+        if (total > done && done > 0) { rankMsg = { text: `Ranking… ${done} of ${total}` }; renderGoalBar(); }
+      });
+      const saved = S.loadGoalRank();
+      const scores = which !== 'all' && saved.goal === goal ? saved.scores : {};
+      for (const id of Object.keys(scores)) if (!byId(id)) delete scores[id]; // forget deleted people
+      // Signed with the profile as it was sent; if it was edited meanwhile, that person shows as unranked.
+      for (const p of todo) if (res[p.id]) scores[p.id] = { ...res[p.id], sig: S.hash(NT.prompts.rankSummary(p)) };
+      S.saveGoalRank({ goal, scores });
+      const missed = todo.filter(p => !res[p.id]).length;
+      rankMsg = missed ? { text: `${missed} weren't scored. Click Rank again for them.`, error: true } : null;
+      if (!missed) toast(`Ranked ${todo.length} ${todo.length === 1 ? 'person' : 'people'} for your goal`);
+    } catch (err) {
+      rankMsg = { text: err.message || String(err), error: true };
+    }
+    ranking = false;
+    render();
+  }
+
   function render() {
+    goalView = computeGoalView();
+    renderGoalBar();
     const list = visible();
     const box = $('#list');
     document.querySelector('.list-head').hidden = !list.length;
@@ -619,7 +703,7 @@
   const fs = $('#form-settings');
   $('#btn-settings').addEventListener('click', () => {
     const s = S.getSettings();
-    for (const k of ['name', 'location', 'role', 'interests', 'bio', 'resume', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
+    for (const k of ['name', 'location', 'role', 'interests', 'goal', 'bio', 'resume', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
       fs.elements[k].value = s[k] || '';
     }
     updateResumeStatus();
@@ -701,6 +785,8 @@
     S.saveSettings(raw);
     if (dlgIdeas.open) updateExamplesSource();
     dlgSettings.close();
+    rankMsg = null;
+    render(); // the goal may have changed
     toast('Settings saved');
   });
 

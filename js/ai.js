@@ -244,6 +244,49 @@
     return structured(system, NT.prompts.draftRequest(person, me, mode, idea, tone, examples), DRAFT_SCHEMA);
   }
 
+  // ---------- rank contacts by relevance to the goal ----------
+  const RANK_SCHEMA = {
+    type: 'object',
+    properties: {
+      rankings: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            score: { type: 'integer' },
+            reason: { type: 'string' },
+          },
+          required: ['id', 'score', 'reason'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['rankings'],
+    additionalProperties: false,
+  };
+  const RANK_BATCH = 60; // contacts per request; keeps each response comfortably small
+
+  // Returns { [personId]: { score, reason } }. One request per 60 people; short ids ("1", "2", …) instead of UUIDs save tokens.
+  async function rankByGoal(people, me, onProgress) {
+    const out = {};
+    for (let i = 0; i < people.length; i += RANK_BATCH) {
+      const batch = people.slice(i, i + RANK_BATCH);
+      onProgress?.(i, people.length);
+      const items = batch.map((person, j) => ({ id: String(j + 1), person }));
+      const res = await structured(NT.prompts.GOAL_RANK_SYSTEM, NT.prompts.goalRankRequest(items, me), RANK_SCHEMA);
+      for (const r of res.rankings || []) {
+        const it = items.find(x => x.id === String(r.id).replace(/[^\d]/g, ''));
+        if (!it) continue;
+        out[it.person.id] = {
+          score: Math.max(0, Math.min(100, Math.round(Number(r.score) || 0))),
+          reason: String(r.reason || '').slice(0, 200),
+        };
+      }
+    }
+    return out;
+  }
+
   window.NT = window.NT || {};
-  NT.ai = { suggestIdeas, draftMessage, findOptions, AIError };
+  NT.ai = { suggestIdeas, draftMessage, findOptions, rankByGoal, AIError };
 })();

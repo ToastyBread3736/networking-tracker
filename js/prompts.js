@@ -89,6 +89,7 @@ Always:
       me.role ? `- Role: ${me.role}` : null,
       me.location ? `- Location: ${me.location}` : null,
       me.interests ? `- Interests: ${me.interests}` : null,
+      me.goal ? `- Current goal: ${me.goal}` : null,
       me.bio ? `- Goals / context: ${me.bio}` : null,
       resume ? resumeBlock(p, me) : null,
       ``,
@@ -217,9 +218,60 @@ Search the web now and find 2–4 real, specific options for this idea.`;
     return `${ideaText(idea)}\nSPECIFIC PLAN (found online; mention it naturally and briefly, the way the user would): ${details}`;
   }
 
+  // ---------- ranking contacts by relevance to the user's goal ----------
+  const GOAL_RANK_SYSTEM = `You rank the user's contacts by how much each one could help with the user's current goal.
+Score each contact 0–100 for "could this person help me reach this goal?":
+- 80–100: a direct path. They work at a company or lab that fits the goal, recruit or hire for it, teach or research in the goal's field, or the notes say they can refer, introduce, or advise on exactly this.
+- 50–79: close. A related field or industry, alumni working in the area, someone likely to know the right people, or an org officer whose group connects to the goal.
+- 20–49: indirect. Some overlap, or general career help (a mentor in a different field, a well-connected peer).
+- 0–19: no visible connection to this goal.
+Use what you know about companies, labs, and fields (e.g. Westinghouse and Oak Ridge National Laboratory are nuclear employers). Read the notes and touchpoints: a friend whose parent works at a target company can score high.
+Relevance comes first. Closeness (level) only breaks near-ties: a level 1 manager at a target company outranks a level 5 friend with no link to the goal.
+Judge only from the profile. Never invent facts about a contact. If a profile is too thin to tell, score it low and say so.
+"reason" is one short line (under 15 words) naming the specific link, e.g. "Engineer at Westinghouse, a nuclear company that hires interns." Return every contact exactly once, using its id.`;
+
+  const clip = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
+
+  // The compact profile sent for ranking (no name, email or phone). Also hashed to tell when someone needs re-ranking.
+  function rankSummary(p) {
+    const S = NT.store;
+    const notes = p.history.slice(-3).filter(h => h.note).map(h => `${h.type}: ${clip(h.note.replace(/\s+/g, ' '), 150)}`);
+    return [
+      p.jobs.length ? `work: ${p.jobs.map(j => S.jobLabel(j)).join('; ')}` : null,
+      p.orgs.length ? `orgs: ${p.orgs.map(o => (o.role ? `${o.role} of ${o.name}` : o.name)).join('; ')}` : null,
+      p.relationship ? `relationship: ${p.relationship}` : null,
+      `level: ${p.level}/5`,
+      p.location ? `location: ${p.location}` : null,
+      p.tags.length ? `tags: ${p.tags.join(', ')}` : null,
+      p.interests ? `interests: ${clip(p.interests, 200)}` : null,
+      p.notes ? `notes: ${clip(p.notes.replace(/\s+/g, ' '), 300)}` : null,
+      notes.length ? `recent touchpoints: ${notes.join(' | ')}` : null,
+    ].filter(Boolean).join('; ');
+  }
+
+  // The goal to rank against: the dedicated field, else the general "goals / anything" box.
+  const goalOf = me => (me.goal || '').trim() || (me.bio || '').trim();
+
+  // `items` is [{ id, person }] with short ids to save tokens.
+  function goalRankRequest(items, me) {
+    const user = [
+      me.role ? `Role: ${me.role}` : null,
+      me.location ? `Location: ${me.location}` : null,
+      me.interests ? `Interests: ${me.interests}` : null,
+      me.goal && me.bio ? `Other context: ${clip(me.bio, 400)}` : null,
+    ].filter(Boolean).join('\n');
+    return `USER'S GOAL: ${goalOf(me)}${user ? `\n${user}` : ''}
+
+CONTACTS (${items.length})
+${items.map(it => `[${it.id}] ${rankSummary(it.person)}`).join('\n')}
+
+Score every contact for this goal.`;
+  }
+
   window.NT = window.NT || {};
   NT.prompts = {
     PLAYBOOK, DRAFT_RULES, OPTIONS_SYSTEM, resolveExamples, ideasRequest, ideasCopyPrompt, draftRequest, draftCopyPrompt,
     optionsRequest, optionsCopyPrompt, ideaWithOption,
+    GOAL_RANK_SYSTEM, rankSummary, goalOf, goalRankRequest,
   };
 })();
