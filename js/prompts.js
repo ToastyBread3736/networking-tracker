@@ -33,7 +33,8 @@ Always:
 - Never make up facts about the contact. If an idea depends on something you don't know (a recent post, a news item), tell the user to look it up first, e.g. "check their recent LinkedIn activity for…".
 - If it has been a long time since the last touchpoint, make the first idea an easy way back in.
 - Use a mix of channels and effort levels.
-- Don't add skill or experience reassurances to ideas ("no experience needed", "all levels welcome").`;
+- Don't add skill or experience reassurances to ideas ("no experience needed", "all levels welcome").
+- MY RESUME, when given, is the user's background. For PEER and PROFESSIONAL contacts, look for real overlap between it and the contact's work, field, or the user's goal (e.g. the user did detector research and the contact is a nuclear engineering professor) and use that overlap to make an idea more specific. Don't build every idea around the resume, and ignore it for FRIENDS.`;
 
   const DRAFT_RULES = `Message-writing rules:
 - If WRITING EXAMPLES are given, they come first. Copy the user's voice and length exactly, even when it breaks the defaults below. Only two rules still apply: never invent facts, and never add skill or experience reassurances.
@@ -45,9 +46,23 @@ Always:
 - Never reassure them about skill or experience: no "no experience needed", "no skill needed", "all levels welcome", "beginners welcome", "you don't have to be good", or anything like it. Just invite them.
 - Never invent specifics. If you don't know a detail (a place, a time), leave it out the way people do in real texts ("volleyball saturday?"). Use a [square-bracket placeholder] only when the message can't work without it, e.g. [article link].
 - Match the channel: email gets a subject line; LinkedIn messages and texts are shorter and have no subject.
-- To a FRIEND, write the way you'd text a friend: short, relaxed, lowercase is fine, no formal ask or sign-off.`;
+- To a FRIEND, write the way you'd text a friend: short, relaxed, lowercase is fine, no formal ask or sign-off.
+- MY RESUME, when given: mention at most one experience from it, in a few words, and only when it connects directly to this contact's work, the goal, or the chosen idea (e.g. emailing a nuclear engineering professor about detection research → one short clause about the user's own detector work). If nothing connects, leave the resume out entirely. Never list credentials, copy resume lines, or make the message about the user; it's a message, not a cover letter. Never use it with FRIENDS.`;
 
-  function personContext(p, me, mode, focus) {
+  // Friends get texts and hangouts, so the resume would only cost tokens there. Same test as the casual tone default.
+  function isFriend(p) {
+    const rel = (p.relationship || '').toLowerCase();
+    return /friend/.test(rel) || (/peer|classmate/.test(rel) && p.level >= 4);
+  }
+  const MAX_RESUME_CHARS = 6000; // roughly 1,500 tokens
+
+  function resumeBlock(p, me) {
+    const text = (me.resume || '').trim();
+    if (!text || isFriend(p)) return null;
+    return `\nMY RESUME (the user's background; use only what connects to this contact or goal)\n<resume>\n${text.slice(0, MAX_RESUME_CHARS)}\n</resume>`;
+  }
+
+  function personContext(p, me, mode, focus, { resume = true } = {}) {
     const S = NT.store;
     const name = [p.firstName, p.lastName].filter(Boolean).join(' ');
     const lines = [
@@ -75,6 +90,7 @@ Always:
       me.location ? `- Location: ${me.location}` : null,
       me.interests ? `- Interests: ${me.interests}` : null,
       me.bio ? `- Goals / context: ${me.bio}` : null,
+      resume ? resumeBlock(p, me) : null,
       ``,
       `GOAL: ${mode === 'build' ? 'BUILD this connection' : 'MAINTAIN this connection'}`,
       `Today: ${S.todayISO()}`,
@@ -181,7 +197,7 @@ Use "note" for one short caveat (e.g. "couldn't find dated events; these are reg
     const today = NT.store.todayISO();
     const area = searchArea(p, me) ||
       'unknown (no location in either profile). Use the extra context if it names a place; otherwise say in "note" that a location is needed';
-    return `${personContext(p, me, mode, focus)}
+    return `${personContext(p, me, mode, focus, { resume: false })}
 
 CHOSEN IDEA: ${ideaText(idea)}
 SEARCH AREA: ${area}

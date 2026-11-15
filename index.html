@@ -264,6 +264,19 @@
           <textarea name="bio" rows="2" placeholder="Looking for a PM internship for summer 2027…"></textarea>
         </label>
       </div>
+      <h3>Resume <small class="muted">— lets drafts mention relevant experience</small></h3>
+      <p class="muted small">Upload a PDF or .txt and its text appears below, where you can trim it. It's used for professional and peer contacts only, never for friends, and a draft mentions at most one relevant item.</p>
+      <div class="resume-row">
+        <button type="button" id="btn-resume-upload">Upload resume…</button>
+        <input type="file" id="resume-file" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden>
+        <button type="button" id="btn-resume-clear">Clear</button>
+        <span id="resume-status" class="muted small"></span>
+      </div>
+      <div class="grid">
+        <label class="full">Resume text
+          <textarea name="resume" rows="6" placeholder="Paste your resume here, or upload it above."></textarea>
+        </label>
+      </div>
       <h3>Writing examples <small class="muted">— default style for drafts in each tone</small></h3>
       <p class="muted small">Paste one or more messages you've actually sent. Drafts will match their voice, length, and formatting, not their content. Separate multiple examples with a line containing <code>---</code>.</p>
       <div class="grid">

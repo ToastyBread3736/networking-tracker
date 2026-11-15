@@ -237,3 +237,7 @@ code { background: var(--panel-2); border: 1px solid var(--line); border-radius:
 .repeat { display: flex; flex-direction: column; gap: 6px; }
 .repeat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 560px) { .repeat-row { grid-template-columns: 1fr; } }
+
+/* ---------- resume upload (settings) ---------- */
+.resume-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.resume-row .muted { flex: 1 1 200px; min-width: 0; }

@@ -7,6 +7,7 @@
   const DEFAULT_SETTINGS = {
     name: '', location: '', role: '', interests: '', bio: '',
     exFriendly: '', exProfessional: '', exCasual: '', // default writing examples per tone
+    resume: '', // plain text, extracted from an uploaded PDF/TXT or pasted
     apiKey: '', model: 'claude-opus-5-5',
   };
 

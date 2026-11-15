@@ -619,10 +619,80 @@
   const fs = $('#form-settings');
   $('#btn-settings').addEventListener('click', () => {
     const s = S.getSettings();
-    for (const k of ['name', 'location', 'role', 'interests', 'bio', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
+    for (const k of ['name', 'location', 'role', 'interests', 'bio', 'resume', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
       fs.elements[k].value = s[k] || '';
     }
+    updateResumeStatus();
     dlgSettings.showModal();
+  });
+
+  // ---------- resume upload ----------
+  // pdf.js is loaded from the CDN only when a PDF is picked; the text is extracted here in the browser.
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  const RESUME_MAX = 6000; // matches the cap used in prompts (about 1,500 tokens)
+  let pdfjsPromise = null;
+  const loadScript = src => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Could not load the PDF reader. Check your internet connection.'));
+    document.head.append(s);
+  });
+  function loadPdfJs() {
+    // A web worker can't start from a file:// page, so the worker script is loaded on the page too and
+    // pdf.js runs it on the main thread. That's fine for a resume-sized PDF.
+    if (!pdfjsPromise) {
+      pdfjsPromise = Promise.all([loadScript(PDFJS + 'pdf.min.js'), loadScript(PDFJS + 'pdf.worker.min.js')])
+        .then(() => {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+          return window.pdfjsLib;
+        })
+        .catch(err => { pdfjsPromise = null; throw err; });
+    }
+    return pdfjsPromise;
+  }
+
+  async function pdfText(file) {
+    const pdfjs = await loadPdfJs();
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const pages = [];
+    for (let i = 1; i <= Math.min(doc.numPages, 5); i++) {
+      const content = await (await doc.getPage(i)).getTextContent();
+      pages.push(content.items.map(it => it.str + (it.hasEOL ? '\n' : '')).join(''));
+    }
+    return pages.join('\n');
+  }
+
+  const tidyResume = t => t.replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  function updateResumeStatus(msg) {
+    const text = fs.elements.resume.value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    let status = msg || (words ? `${words} words` : 'No resume added');
+    if (text.length > RESUME_MAX) status += ` · only the first ${RESUME_MAX.toLocaleString()} characters are sent to the AI`;
+    $('#resume-status').textContent = status;
+  }
+
+  $('#btn-resume-upload').addEventListener('click', () => $('#resume-file').click());
+  $('#btn-resume-clear').addEventListener('click', () => { fs.elements.resume.value = ''; updateResumeStatus(); });
+  fs.elements.resume.addEventListener('input', () => updateResumeStatus());
+  $('#resume-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    updateResumeStatus(`Reading ${file.name}…`);
+    try {
+      const text = tidyResume(isPdf ? await pdfText(file) : await file.text());
+      if (!text) {
+        updateResumeStatus("Couldn't find any text in that file. If it's a scanned image, paste the text instead.");
+        return;
+      }
+      fs.elements.resume.value = text;
+      updateResumeStatus(`Read ${file.name} · ${text.split(/\s+/).length} words. Check it, then Save.`);
+    } catch (err) {
+      updateResumeStatus(`Couldn't read that file: ${err.message || err}`);
+    }
   });
   fs.addEventListener('submit', e => {
     e.preventDefault();
