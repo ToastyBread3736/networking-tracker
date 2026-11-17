@@ -369,3 +369,4 @@ input[type="date"]::-webkit-datetime-edit-year-field:focus { background: rgb(124
 .cal .day:disabled { opacity: .3; cursor: default; }
 .cal-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .cal-foot .ghost { color: var(--accent); }
+.select-btn.fit { width: auto; white-space: nowrap; }

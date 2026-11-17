@@ -945,8 +945,12 @@
 
   // Same themed menu for a fixed list (a <select>). The real select stays in the form, hidden, so FormData,
   // change listeners and code that sets .value keep working; a button shows the choice and opens the menu.
-  function themedSelect(select) {
-    const btn = h('button', { type: 'button', class: 'select-btn', 'aria-haspopup': 'listbox', 'aria-expanded': 'false' });
+  // `fit`: size the button to its longest option (like a native select) instead of filling its container.
+  function themedSelect(select, { fit = false } = {}) {
+    const btn = h('button', {
+      type: 'button', class: 'select-btn' + (fit ? ' fit' : ''),
+      'aria-haspopup': 'listbox', 'aria-expanded': 'false', 'aria-label': select.getAttribute('aria-label'),
+    });
     select.before(btn);
     select.hidden = true;
     const menu = h('ul', { class: 'combo-menu', role: 'listbox', hidden: true });
@@ -959,12 +963,18 @@
       get() { return desc.get.call(this); },
       set(v) { desc.set.call(this, v); label(); },
     });
+    if (fit) {
+      // Measure each option so the button doesn't change width when the choice changes.
+      let widest = 0;
+      for (const o of select.options) { btn.textContent = o.textContent; widest = Math.max(widest, btn.offsetWidth); }
+      if (widest) btn.style.minWidth = Math.ceil(widest) + 'px';
+    }
     label();
 
     function place() {
       const r = btn.getBoundingClientRect();
-      menu.style.left = r.left + 'px';
-      menu.style.width = r.width + 'px';
+      menu.style.minWidth = r.width + 'px'; // at least as wide as the box; wider if an option needs it
+      menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
       const below = window.innerHeight - r.bottom - 8;
       const height = Math.min(menu.scrollHeight, 240);
       if (below < height && r.top > below) { menu.style.top = ''; menu.style.bottom = (window.innerHeight - r.top + 4) + 'px'; }
@@ -1022,6 +1032,8 @@
     window.addEventListener('resize', close);
   }
   themedSelect(fp.frequencyPreset);
+  themedSelect($('#filter'), { fit: true });
+  themedSelect($('#sort'), { fit: true });
 
   // ---------- themed calendar for date fields ----------
   // The real <input type="date"> stays (typing a date still works, and it's what gets saved); this popup only fills
