@@ -370,3 +370,7 @@ input[type="date"]::-webkit-datetime-edit-year-field:focus { background: rgb(124
 .cal-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 .cal-foot .ghost { color: var(--accent); }
 .select-btn.fit { width: auto; white-space: nowrap; }
+
+/* Optical centering: the system font leaves more room above its letters than below, so with equal padding
+   the text sat ~1px low. Half a pixel moves from top to bottom; total height is unchanged. */
+button, input:not([type="checkbox"]):not([type="radio"]), select { padding-top: 6.5px; padding-bottom: 7.5px; }
