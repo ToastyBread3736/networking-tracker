@@ -416,3 +416,18 @@ button, input:not([type="checkbox"]):not([type="radio"]), select { padding-top: 
   .list-head.prospect, .row.prospect { grid-template-columns: 80px 1fr 96px; }
   .row.prospect .ask { display: none; }
 }
+
+/* Contact by (potential connections): Met | Person | Where you met | Your ask | Contact by | Tags | actions */
+.list-head.prospect, .row.prospect {
+  grid-template-columns: 92px minmax(170px, 2fr) minmax(110px, 1.2fr) minmax(140px, 2fr) 84px minmax(100px, 1.3fr) 96px;
+}
+.by { font-size: 13px; color: var(--muted); }
+.by.overdue { color: var(--red); font-weight: 600; }
+.by.soon { color: var(--amber); font-weight: 600; }
+@media (max-width: 960px) {
+  .list-head.prospect, .row.prospect { grid-template-columns: 86px minmax(140px, 1fr) minmax(100px, 1fr) 78px 96px; }
+}
+@media (max-width: 560px) {
+  .list-head.prospect, .row.prospect { grid-template-columns: 80px 1fr 70px 96px; }
+  .list-head.prospect span:nth-child(4) { display: none; }
+}

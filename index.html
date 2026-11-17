@@ -24,6 +24,7 @@
       <select id="sort" aria-label="Sort">
         <option value="due" data-tab="network">Next touchpoint</option>
         <option value="met" data-tab="potential">Contact date</option>
+        <option value="contactBy" data-tab="potential">Contact by</option>
         <option value="name">Name</option>
         <option value="level" data-tab="network">Level</option>
         <option value="goal">Goal relevance ✦</option>
@@ -57,6 +58,8 @@
           <input name="metAt" placeholder="ANS career fair, LinkedIn, their talk…">
         </label>
         <label class="prospect-only"><span>Contact date <small class="muted">— if you met</small></span><input name="metDate" type="date"></label>
+        <label class="prospect-only"><span>Contact by <small class="muted">— optional</small></span><input name="contactBy" type="date"></label>
+        <span class="prospect-only" aria-hidden="true"></span>
         <label class="prospect-only full">Your primary goal with them (your ask)
           <textarea name="ask" rows="2" placeholder="Learn how they got into detector R&D and whether their group takes summer interns"></textarea>
         </label>

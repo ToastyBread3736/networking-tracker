@@ -81,6 +81,8 @@
       goal: (a, b) => score(b) - score(a) || tiebreak(a, b),
       due: (a, b) => S.dueInfo(a).days - S.dueInfo(b).days,
       met: byMet,
+      // soonest deadline first; people without one after, most recently met first
+      contactBy: (a, b) => (a.contactBy || '9999').localeCompare(b.contactBy || '9999') || byMet(a, b),
       name: (a, b) => fullName(a).localeCompare(fullName(b)),
       level: (a, b) => b.level - a.level || fullName(a).localeCompare(fullName(b)),
     }[view.sort];
@@ -129,8 +131,19 @@
 
   const LIST_HEAD = {
     network: [['Next'], ['Person'], ['Location', 'col-opt'], ['Level'], ['Relationship', 'col-opt'], ['Goal'], ['Tags', 'col-opt'], ['']],
-    potential: [['Met'], ['Person'], ['Where you met', 'col-opt'], ['Your ask'], ['Tags', 'col-opt'], ['']],
+    potential: [['Met'], ['Person'], ['Where you met', 'col-opt'], ['Your ask'], ['Contact by'], ['Tags', 'col-opt'], ['']],
   };
+
+  // Optional reach-out deadline: red once it has passed, amber within a week.
+  function contactByCell(p) {
+    if (!p.contactBy) return h('span', { class: 'by none' }, '—');
+    const [y, m, d] = p.contactBy.split('-').map(Number);
+    const [ty, tm, td] = S.todayISO().split('-').map(Number);
+    const days = Math.round((new Date(y, m - 1, d) - new Date(ty, tm - 1, td)) / 86400000);
+    const status = days < 0 ? 'overdue' : days <= 7 ? 'soon' : 'ok';
+    const when = days < 0 ? `${-days}d overdue` : days === 0 ? 'today' : `in ${days}d`;
+    return h('span', { class: `by ${status}`, title: `Contact by ${p.contactBy} (${when})` }, shortDate(p.contactBy));
+  }
 
   function prospectRow(p) {
     return h('div', { class: 'row prospect' },
@@ -140,6 +153,7 @@
       whoCell(p),
       h('span', { class: 'loc col-opt', title: p.metAt }, p.metAt || '—'),
       h('span', { class: 'ask', title: p.ask }, p.ask || '—'),
+      contactByCell(p),
       tagsCell(p),
       h('div', { class: 'actions' },
         h('button', { class: 'ghost', title: 'Move to your network', onclick: () => promote(p.id) }, '→'),
@@ -486,7 +500,7 @@
     $('#btn-delete').hidden = !p;
     $('#btn-promote').hidden = !(p && isProspect);
     const v = p || { level: 3, mode: 'build', frequencyDays: 90, lastTouch: isProspect ? '' : S.todayISO(), tags: [] };
-    for (const k of ['firstName', 'lastName', 'location', 'email', 'phone', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes', 'metAt', 'metDate', 'ask']) {
+    for (const k of ['firstName', 'lastName', 'location', 'email', 'phone', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes', 'metAt', 'metDate', 'contactBy', 'ask']) {
       fp.elements[k].value = v[k] || '';
     }
     fp.elements.metDate.max = S.todayISO();

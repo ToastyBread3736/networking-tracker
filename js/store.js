@@ -75,6 +75,7 @@
     const prospect = raw.prospect === true;
     const level = prospect ? 0 : Math.min(5, Math.max(1, parseInt(raw.level, 10) || 3));
     const metDate = /^\d{4}-\d{2}-\d{2}$/.test(raw.metDate || '') ? raw.metDate : '';
+    const contactBy = /^\d{4}-\d{2}-\d{2}$/.test(raw.contactBy || '') ? raw.contactBy : '';
     const freq = Math.min(3650, Math.max(1, parseInt(raw.frequencyDays, 10) || 90));
     const lastTouch = /^\d{4}-\d{2}-\d{2}$/.test(raw.lastTouch || '') ? raw.lastTouch : '';
     // Repeatable entries. Older data stored a single job/company; fold that into jobs[0].
@@ -121,6 +122,7 @@
       prospect,
       metAt: str(raw.metAt, 200),   // where you met (potential connections)
       metDate,                       // contact date, if you've met
+      contactBy,                     // optional: reach out to them by this date
       ask: str(raw.ask, 1000),       // what you want from the connection
       level,
       relationship: str(raw.relationship, 80),

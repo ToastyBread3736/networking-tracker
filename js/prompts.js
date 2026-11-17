@@ -109,6 +109,7 @@ Always:
       p.prospect ? `- Status: POTENTIAL CONNECTION (level 0, not in the user's network yet)` : null,
       p.metAt ? `- Where the user met them: ${p.metAt}` : null,
       p.prospect ? `- Contact date: ${p.metDate || (p.metAt ? "not recorded" : "they haven't met yet")}` : null,
+      p.prospect && p.contactBy ? `- The user wants to reach out by: ${p.contactBy}` : null,
       p.ask ? `- The user's ask (primary goal with this person): ${p.ask}` : null,
       p.relationship ? `- Relationship to user: ${p.relationship}` : null,
       p.prospect ? null : `- Level of connection: ${p.level}/5 (${S.LEVELS[p.level]})`,
