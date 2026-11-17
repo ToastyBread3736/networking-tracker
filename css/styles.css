@@ -258,3 +258,34 @@ code { background: var(--panel-2); border: 1px solid var(--line); border-radius:
 .goal-score.high { color: var(--green); border-color: rgb(79 191 127 / .45); background: rgb(79 191 127 / .1); }
 .goal-score.mid { color: var(--amber); border-color: rgb(227 179 65 / .4); background: rgb(227 179 65 / .08); }
 .who .job.reason { color: #a9b4c2; }
+
+/* ---------- dropdowns: selects and pick-or-type boxes share one chevron ---------- */
+select {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 30px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238b96a5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+}
+select:hover { border-color: #3a4352; }
+select option { background: var(--panel-2); color: var(--text); }
+
+.combo { position: relative; display: block; color: var(--text); font-size: 14px; }
+.combo input { padding-right: 32px; }
+.combo-toggle {
+  position: absolute; top: 1px; right: 1px; bottom: 1px; width: 30px; padding: 0;
+  border: 0; border-radius: 0 5px 5px 0; background: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238b96a5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: center;
+}
+.combo-toggle:hover { background-color: #232a35; }
+.combo-menu {
+  position: fixed; z-index: 50; margin: 0; padding: 4px; list-style: none;
+  max-height: 240px; overflow-y: auto;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .45);
+}
+.combo-menu li { padding: 6px 9px; border-radius: 4px; font-size: 14px; color: var(--text); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.combo-menu li.dim { color: var(--muted); }
+.combo-menu li.current { font-weight: 600; }
+.combo-menu li.current::after { content: " ✓"; color: var(--accent); }
+.combo-menu li:hover, .combo-menu li.active { background: #263043; color: var(--text); }

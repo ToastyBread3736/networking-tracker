@@ -851,6 +851,98 @@
     if (e.key === '/' && !e.target.closest('input, textarea, select, dialog')) { e.preventDefault(); $('#search').focus(); }
     if (e.key === 'n' && !e.target.closest('input, textarea, select, dialog')) { e.preventDefault(); openPerson(); }
   });
+  // ---------- pick-or-type dropdowns ----------
+  // Replaces a native <datalist> (unstyled, misaligned, and it hides every option that doesn't match the text)
+  // with a themed menu the width of the box. It always lists every option: typing moves matches to the top.
+  function combobox(input) {
+    const list = document.getElementById(input.getAttribute('list'));
+    if (!list) return;
+    const options = [...list.options].map(o => o.value).filter(Boolean);
+    input.removeAttribute('list');
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-expanded', 'false');
+
+    const wrap = h('span', { class: 'combo' });
+    input.replaceWith(wrap);
+    const toggle = h('button', { type: 'button', class: 'combo-toggle', tabindex: '-1', 'aria-label': 'Show options' });
+    wrap.append(input, toggle);
+    const menu = h('ul', { class: 'combo-menu', role: 'listbox', hidden: true });
+    let items = [], active = -1, picking = false;
+
+    function place() {
+      const r = input.getBoundingClientRect();
+      menu.style.left = r.left + 'px';
+      menu.style.width = r.width + 'px';
+      const below = window.innerHeight - r.bottom - 8;
+      const height = Math.min(menu.scrollHeight, 240);
+      if (below < height && r.top > below) { menu.style.top = ''; menu.style.bottom = (window.innerHeight - r.top + 4) + 'px'; }
+      else { menu.style.bottom = ''; menu.style.top = (r.bottom + 4) + 'px'; }
+    }
+
+    function build(filtering) {
+      const q = filtering ? input.value.trim().toLowerCase() : '';
+      const cur = input.value.trim().toLowerCase();
+      const hits = q ? options.filter(o => o.toLowerCase().includes(q)) : [];
+      const ordered = q ? [...hits, ...options.filter(o => !hits.includes(o))] : options;
+      items = ordered.map(o => h('li', {
+        role: 'option',
+        class: [o.toLowerCase() === cur ? 'current' : '', q && !hits.includes(o) ? 'dim' : ''].filter(Boolean).join(' ') || null,
+        onmousedown: e => { e.preventDefault(); pick(o); },
+      }, o));
+      menu.replaceChildren(...items);
+      active = q && hits.length ? 0 : ordered.findIndex(o => o.toLowerCase() === cur);
+      highlight();
+    }
+
+    function highlight() {
+      items.forEach((li, i) => li.classList.toggle('active', i === active));
+      if (items[active]) items[active].scrollIntoView({ block: 'nearest' });
+    }
+
+    function open(filtering = false) {
+      if (!menu.isConnected) (input.closest('dialog') || document.body).append(menu);
+      menu.hidden = false;
+      input.setAttribute('aria-expanded', 'true');
+      build(filtering);
+      place();
+    }
+    function close() { menu.hidden = true; input.setAttribute('aria-expanded', 'false'); }
+    function pick(value) {
+      input.value = value;
+      picking = true; // other listeners see the change, but the menu doesn't reopen
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      picking = false;
+      close();
+      input.focus();
+    }
+
+    input.addEventListener('click', () => (menu.hidden ? open() : null));
+    input.addEventListener('input', () => { if (!picking) open(true); });
+    input.addEventListener('blur', close);
+    toggle.addEventListener('mousedown', e => { e.preventDefault(); input.focus(); menu.hidden ? open() : close(); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (menu.hidden) { open(); return; }
+        const n = items.length;
+        active = e.key === 'ArrowDown' ? (active + 1) % n : (active - 1 + n) % n;
+        highlight();
+      } else if (e.key === 'Enter' && !menu.hidden && items[active]) {
+        e.preventDefault();
+        pick(items[active].textContent);
+      } else if (e.key === 'Escape' && !menu.hidden) {
+        e.preventDefault(); // close the menu, not the dialog
+        e.stopPropagation();
+        close();
+      } else if (e.key === 'Tab') close();
+    });
+    // The menu is fixed-position, so close it if the page or dialog scrolls underneath it.
+    document.addEventListener('scroll', e => { if (!menu.hidden && e.target !== menu) close(); }, true);
+    window.addEventListener('resize', close);
+  }
+  document.querySelectorAll('input[list]').forEach(combobox);
+
   // Re-render at midnight-ish so "due" labels stay current if the tab stays open.
   setInterval(render, 60 * 60 * 1000);
 
