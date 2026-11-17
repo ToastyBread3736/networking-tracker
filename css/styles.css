@@ -1,13 +1,13 @@
 :root {
   color-scheme: dark;
-  --bg: #1c1c1c;
-  --panel: #262626;
-  --panel-2: #303030;
+  --bg: #1b1c1e;
+  --panel: #25262a;
+  --panel-2: #2f3034;
   --line: #4B4B4B;
   --text: #f5f5f5;
   --muted: #b8b8b8;
   --accent: #FF8200;
-  --accent-ink: #1c1c1c;
+  --accent-ink: #1b1c1e;
   --red: #f0716b;
   --amber: #e3b341;
   --green: #4fbf7f;
@@ -40,7 +40,7 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgb(255 255 255 / .14);
 }
 button { width: auto; cursor: pointer; white-space: nowrap; transition: background .12s, border-color .12s; }
-button:hover { border-color: #6b6b6b; background: #3a3a3a; }
+button:hover { border-color: #6b6b6b; background: #393a3e; }
 button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
 button.primary:hover { filter: brightness(1.08); }
 button.danger { color: var(--red); }
@@ -54,7 +54,7 @@ button:disabled { opacity: .55; cursor: progress; }
 .topbar {
   position: sticky; top: 0; z-index: 5;
   display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
-  padding: 14px 20px; background: rgb(28 28 28 / .94); backdrop-filter: blur(6px);
+  padding: 14px 20px; background: rgb(27 28 30 / .94); backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: baseline; gap: 14px; }
@@ -79,7 +79,7 @@ main { padding: 8px 20px 40px; }
   padding: 9px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
   min-height: 46px;
 }
-.row:hover { border-color: #5a5a5a; background: #2b2b2b; }
+.row:hover { border-color: #5a5a5a; background: #2a2b2f; }
 .row > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who { display: flex; flex-direction: column; line-height: 1.25; cursor: pointer; }
 .who .name { font-weight: 600; }
@@ -277,7 +277,7 @@ select option { background: var(--panel-2); color: var(--text); }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23b8b8b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: center;
 }
-.combo-toggle:hover { background-color: #3a3a3a; }
+.combo-toggle:hover { background-color: #393a3e; }
 .combo-menu {
   position: fixed; z-index: 50; margin: 0; padding: 4px; list-style: none;
   max-height: 240px; overflow-y: auto;
@@ -288,7 +288,7 @@ select option { background: var(--panel-2); color: var(--text); }
 .combo-menu li.dim { color: var(--muted); }
 .combo-menu li.current { font-weight: 600; }
 .combo-menu li.current::after { content: " ✓"; color: var(--accent); }
-.combo-menu li:hover, .combo-menu li.active { background: #404040; color: var(--text); }
+.combo-menu li:hover, .combo-menu li.active { background: #3f4044; color: var(--text); }
 
 /* ---------- scrollbars ----------
    Thin rounded thumb on a transparent track, with no arrow buttons. Scrolling boxes with rounded corners
@@ -323,7 +323,7 @@ dialog::-webkit-scrollbar-track { margin-block: 12px; }
    transition then slides it back in from the corner). Re-state the image on hover and only animate the color. */
 .combo-toggle, .select-btn { transition: background-color .12s, border-color .12s; }
 .combo-toggle:hover {
-  background: #3a3a3a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
+  background: #393a3e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
 }
 .select-btn:hover {
   background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;
@@ -342,7 +342,7 @@ input[type="date"]::-webkit-datetime-edit-year-field:focus { background: rgb(255
   background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%23b8b8b8' stroke-width='1.4'%3E%3Crect x='1.5' y='2.5' width='11' height='10' rx='2'/%3E%3Cpath d='M1.5 5.5h11M4.5 1v3M9.5 1v3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
 }
 .date-toggle:hover, .date-toggle[aria-expanded="true"] {
-  background: #3a3a3a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%23ffffff' stroke-width='1.4'%3E%3Crect x='1.5' y='2.5' width='11' height='10' rx='2'/%3E%3Cpath d='M1.5 5.5h11M4.5 1v3M9.5 1v3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+  background: #393a3e url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%23ffffff' stroke-width='1.4'%3E%3Crect x='1.5' y='2.5' width='11' height='10' rx='2'/%3E%3Cpath d='M1.5 5.5h11M4.5 1v3M9.5 1v3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
 }
 .date-wrap input { padding-right: 36px; }
 
@@ -354,17 +354,17 @@ input[type="date"]::-webkit-datetime-edit-year-field:focus { background: rgb(255
 .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .cal-title { font-weight: 600; }
 .cal-nav { padding: 2px 9px; font-size: 16px; line-height: 1.2; background: transparent; border-color: transparent; color: var(--muted); }
-.cal-nav:hover { background: #404040; border-color: transparent; color: var(--text); }
+.cal-nav:hover { background: #3f4044; border-color: transparent; color: var(--text); }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .cal .dow { text-align: center; font-size: 11px; color: var(--muted); padding: 4px 0; }
 .cal .day {
   padding: 0; height: 30px; border: 1px solid transparent; border-radius: 6px;
   background: transparent; color: var(--text); font-size: 13px; text-align: center;
 }
-.cal .day:hover:not(:disabled) { background: #404040; border-color: transparent; }
+.cal .day:hover:not(:disabled) { background: #3f4044; border-color: transparent; }
 .cal .day.out { color: #6e6e6e; }
 .cal .day.today { border-color: var(--accent); }
-.cal .day.cursor { background: #404040; }
+.cal .day.cursor { background: #3f4044; }
 .cal .day.sel, .cal .day.sel:hover { background: var(--accent); color: var(--accent-ink); font-weight: 600; border-color: var(--accent); }
 .cal .day:disabled { opacity: .3; cursor: default; }
 .cal-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
@@ -387,3 +387,8 @@ button { font-weight: 500; }
 .due { font-size: 11.5px; padding: 3px 6px; }
 @media (max-width: 960px) { .list-head, .row { grid-template-columns: 100px minmax(140px, 1fr) 62px 80px 96px; } }
 @media (max-width: 560px) { .list-head, .row { grid-template-columns: 96px 1fr 96px; } }
+/* Keep orange for actions and selection only. A screenful of orange chips and dots makes the neutral grays
+   look orange-tinted (the eye adapts to it); the grays above also carry a trace of blue to balance that. */
+.level i.on { background: #e6e6e6; }
+.mode.build { color: #ffffff; background: #4B4B4B; box-shadow: none; }
+.mode.maintain { color: var(--muted); background: transparent; box-shadow: inset 0 0 0 1px #4B4B4B; }
