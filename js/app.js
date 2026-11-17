@@ -158,6 +158,26 @@
     return h('span', { class: `by ${status}`, title: `Contact by ${p.contactBy} (${when})` }, shortDate(p.contactBy));
   }
 
+  // The "→" text glyph draws only ~5px tall next to the ~11px ✓ ✦ ✎, so the move button uses a drawn arrow
+  // of the same size instead.
+  function arrowIcon() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 12 12');
+    svg.setAttribute('width', '12');
+    svg.setAttribute('height', '12');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M1.5 6h8.5M6.5 2.5L10 6l-3.5 3.5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.6');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.append(path);
+    return svg;
+  }
+
   function prospectRow(p) {
     return h('div', { class: 'row prospect' },
       p.metDate
@@ -169,7 +189,7 @@
       contactByCell(p),
       tagsCell(p),
       h('div', { class: 'actions' },
-        h('button', { class: 'ghost', title: 'Move to your network', onclick: () => promote(p.id) }, '→'),
+        h('button', { class: 'ghost promote', title: 'Move to your network', 'aria-label': 'Move to your network', onclick: () => openPromote(p.id) }, arrowIcon()),
         h('button', { class: 'ghost', title: 'First-contact ideas & drafts', onclick: () => openIdeas(p.id) }, '✦'),
         h('button', { class: 'ghost', title: 'Edit', onclick: () => openPerson(p.id) }, '✎')),
     );
@@ -511,10 +531,13 @@
     fp.querySelectorAll('.prospect-only').forEach(el => (el.hidden = !prospect));
   }
 
+  const submitBtn = fp.querySelector('button[type=submit]');
   function openPerson(id, { prospect = false } = {}) {
     editingId = id || null;
     const p = id ? byId(id) : null;
     fp.reset();
+    promoting = null;
+    submitBtn.textContent = 'Save';
     const isProspect = p ? p.prospect : prospect;
     setFormKind(isProspect);
     $('#person-title').textContent = p ? `Edit ${fullName(p)}` : isProspect ? 'Add potential connection' : 'Add person';
@@ -575,41 +598,54 @@
     else people.push(p);
     persist();
     dlgPerson.close();
-    toast(existing ? 'Saved' : `Added ${p.firstName}`);
+    if (promoting && existing) {
+      const before = promoting;
+      promoting = null;
+      toast(`Moved ${p.firstName} to your network`, {
+        label: 'Undo',
+        fn: () => {
+          const i = people.findIndex(x => x.id === before.id);
+          if (i < 0) return;
+          people[i] = S.normalize(before);
+          persist();
+        },
+      });
+    } else {
+      toast(existing ? 'Saved' : `Added ${p.firstName}`);
+    }
   });
 
   $('#btn-person-log').addEventListener('click', () => openLog(editingId));
 
-  // Potential → Network: becomes a level-1 connection whose touchpoint clock starts at the contact date
-  // (or today), then opens in the full form so you can set the level, frequency and Build/Maintain.
-  function promote(id) {
-    const p = byId(id);
+  // Potential → Network. The form switches to the full network version (level, touchpoint frequency, last
+  // touchpoint, Build/Maintain, interests) with starting values filled in, and its button reads "Move to network".
+  // Nothing changes until that's clicked; Cancel leaves them in Potential connections.
+  let promoting = null; // the prospect as it was before the move, for Undo
+  function enterPromote() {
+    const p = byId(editingId);
     if (!p || !p.prospect) return;
-    const before = { ...p };
-    const moved = S.normalize({ ...p, prospect: false, level: 1, mode: 'build', lastTouch: p.metDate || S.todayISO() });
-    people[people.indexOf(p)] = moved;
-    persist();
-    if (dlgPerson.open) dlgPerson.close();
-    setTab('network');
-    openPerson(moved.id);
-    toast(`Moved ${moved.firstName} to your network`, {
-      label: 'Undo',
-      fn: () => {
-        const i = people.findIndex(x => x.id === id);
-        if (i < 0) return;
-        people[i] = S.normalize(before);
-        persist();
-        if (dlgPerson.open && editingId === id) dlgPerson.close();
-        setTab('potential');
-      },
-    });
+    promoting = { ...p };
+    setFormKind(false); // shows the network fields, hides Where you met / Contact date / ask (their values are kept)
+    $('#person-title').textContent = `Move ${fullName(p)} to your network`;
+    $('#btn-delete').hidden = true;
+    $('#person-touches').hidden = true;
+    submitBtn.textContent = 'Move to network';
+    // Starting values: a new connection, touchpoint clock starting at the day you met (or today).
+    fp.querySelector('input[name=level][value="1"]').checked = true;
+    fp.querySelector('input[name=mode][value="build"]').checked = true;
+    fp.elements.lastTouch.value = p.metDate || S.todayISO();
+    fp.frequencyPreset.value = '90';
+    fp.frequencyCustom.value = '';
+    updateFreqCustom();
+    updateLevelHint();
+    fp.querySelector('input[name=level]:checked').focus();
   }
-  $('#btn-promote').addEventListener('click', () => {
-    if (!fp.reportValidity()) return;
-    const id = editingId;
-    fp.requestSubmit(); // keep any edits made in the form before moving them
-    promote(id);
-  });
+  function openPromote(id) {
+    openPerson(id);
+    enterPromote();
+  }
+  // From the potential connection's edit form: keeps any edits typed so far.
+  $('#btn-promote').addEventListener('click', enterPromote);
 
   $('#btn-delete').addEventListener('click', () => {
     const p = byId(editingId);
