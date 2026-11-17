@@ -111,10 +111,25 @@
   }
 
   function tagsCell(p) {
+    if (!p.tags.length) return h('span', { class: 'tags col-opt empty-cell' }, '—');
     return h('span', { class: 'tags col-opt' },
       p.tags.map(t => h('span', { class: 'tag', 'data-t': t, title: `Filter by #${t}`, onclick: () => setQuery('#' + t) }, t)),
-      p.tags.length ? h('span', { class: 'tag more', hidden: true }) : null);
+      h('span', { class: 'tag more', hidden: true }));
   }
+
+  // Days until a potential connection's Contact by date (negative = missed), or null if none is set.
+  function contactByDays(p) {
+    if (!p.prospect || !p.contactBy) return null;
+    const [y, m, d] = p.contactBy.split('-').map(Number);
+    const [ty, tm, td] = S.todayISO().split('-').map(Number);
+    return Math.round((new Date(y, m - 1, d) - new Date(ty, tm - 1, td)) / 86400000);
+  }
+  // Overdue = a network touchpoint past due, or a missed Contact by date.
+  const isOverdue = p => (p.prospect ? (contactByDays(p) ?? 0) < 0 : S.dueInfo(p).days < 0);
+  const isThisWeek = p => {
+    const d = p.prospect ? contactByDays(p) : S.dueInfo(p).days;
+    return d !== null && d >= 0 && d <= 7;
+  };
   function whoCell(p) {
     const g = view.sort === 'goal' ? goalView.scores.get(p.id) : null;
     return h('div', { class: 'who', title: 'Edit', onclick: () => openPerson(p.id) },
@@ -137,9 +152,7 @@
   // Optional reach-out deadline: red once it has passed, amber within a week.
   function contactByCell(p) {
     if (!p.contactBy) return h('span', { class: 'by none' }, '—');
-    const [y, m, d] = p.contactBy.split('-').map(Number);
-    const [ty, tm, td] = S.todayISO().split('-').map(Number);
-    const days = Math.round((new Date(y, m - 1, d) - new Date(ty, tm - 1, td)) / 86400000);
+    const days = contactByDays(p);
     const status = days < 0 ? 'overdue' : days <= 7 ? 'soon' : 'ok';
     const when = days < 0 ? `${-days}d overdue` : days === 0 ? 'today' : `in ${days}d`;
     return h('span', { class: `by ${status}`, title: `Contact by ${p.contactBy} (${when})` }, shortDate(p.contactBy));
@@ -178,9 +191,7 @@
         [1, 2, 3, 4, 5].map(i => h('i', { class: i <= p.level ? 'on' : '' }))),
       h('span', { class: 'rel col-opt', title: p.relationship }, p.relationship || '—'),
       h('span', { class: `mode ${p.mode}` }, p.mode === 'build' ? 'Build' : 'Maintain'),
-      h('span', { class: 'tags col-opt' },
-        p.tags.map(t => h('span', { class: 'tag', 'data-t': t, title: `Filter by #${t}`, onclick: () => setQuery('#' + t) }, t)),
-        p.tags.length ? h('span', { class: 'tag more', hidden: true }) : null),
+      tagsCell(p),
       h('div', { class: 'actions' },
         h('button', { class: 'ghost', title: 'Log a touchpoint', onclick: () => openLog(p.id) }, '✓'),
         h('button', { class: 'ghost', title: 'Ideas & drafts', onclick: () => openIdeas(p.id) }, '✦'),
@@ -271,7 +282,16 @@
       const on = t.dataset.tab === view.tab;
       t.classList.toggle('active', on);
       t.setAttribute('aria-selected', on);
-      t.querySelector('.tab-count').textContent = t.dataset.tab === 'potential' ? people.length - net.length : net.length;
+      const members = t.dataset.tab === 'potential' ? people.filter(p => p.prospect) : net;
+      t.querySelector('.tab-count').textContent = members.length;
+      // each tab's own overdue count, so you can see which list needs attention
+      const late = members.filter(isOverdue).length;
+      let badge = t.querySelector('.tab-overdue');
+      if (!badge) { badge = h('span', { class: 'tab-overdue' }); t.append(badge); }
+      badge.hidden = !late;
+      badge.textContent = late;
+      badge.title = `${late} overdue`;
+      t.title = late ? `${members.length} ${t.dataset.tab === 'potential' ? 'potential connections' : 'people'}, ${late} overdue` : '';
     });
     const head = document.querySelector('.list-head');
     head.className = 'list-head' + (potential ? ' prospect' : '');
@@ -297,8 +317,9 @@
       box.replaceChildren(...list.map(row));
       fitAllTags();
     }
-    const overdue = net.filter(p => S.dueInfo(p).days < 0).length;
-    const soon = net.filter(p => { const d = S.dueInfo(p).days; return d >= 0 && d <= 7; }).length;
+    // Overdue / this week count both tabs: touchpoints due plus Contact by dates.
+    const overdue = people.filter(isOverdue).length;
+    const soon = people.filter(isThisWeek).length;
     $('#stats').replaceChildren(
       h('span', {}, h('b', {}, net.length), ' people'),
       h('span', { class: overdue ? 'red' : '' }, h('b', {}, overdue), ' overdue'),

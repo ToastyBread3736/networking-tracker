@@ -431,3 +431,12 @@ button, input:not([type="checkbox"]):not([type="radio"]), select { padding-top: 
   .list-head.prospect, .row.prospect { grid-template-columns: 80px 1fr 70px 96px; }
   .list-head.prospect span:nth-child(4) { display: none; }
 }
+
+/* empty tags cell shows the same dash as other blank columns */
+.tags.empty-cell { color: var(--muted); font-size: 13px; }
+/* per-tab overdue count */
+.tab-overdue {
+  display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; border-radius: 9px;
+  font-size: 11px; line-height: 17px; font-weight: 700; text-align: center;
+  color: var(--red); background: rgb(240 113 107 / .12); border: 1px solid rgb(240 113 107 / .4);
+}
