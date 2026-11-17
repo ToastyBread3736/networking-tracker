@@ -440,4 +440,4 @@ button, input:not([type="checkbox"]):not([type="radio"]), select { padding-top: 
   font-size: 11px; line-height: 17px; font-weight: 700; text-align: center;
   color: var(--red); background: rgb(240 113 107 / .12); border: 1px solid rgb(240 113 107 / .4);
 }
-.actions .promote svg { display: block; margin: 2px 0; }
+.actions .promote svg { display: block; margin: 2.75px 0 1.25px; } /* centered on the same line as ✦ and ✎ */
