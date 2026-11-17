@@ -1042,6 +1042,7 @@
     const cal = h('div', { class: 'cal', role: 'dialog', 'aria-label': 'Choose a date', hidden: true });
     cal.addEventListener('mousedown', e => e.preventDefault()); // keep focus on the toggle so blur means "clicked away"
     let view = { y: 0, m: 0 }, cursor = '';
+    let keyNav = false; // the grey cursor square only shows while moving through days with the keyboard
 
     const inRange = iso => (!validISO(input.min) || iso >= input.min) && (!validISO(input.max) || iso <= input.max);
 
@@ -1061,7 +1062,7 @@
       for (let i = 0; i < 42; i++) {
         const iso = isoOf(view.y, view.m, 1 - first + i);
         const p = partsOf(iso);
-        const cls = ['day', p.m !== view.m ? 'out' : '', iso === today ? 'today' : '', iso === input.value ? 'sel' : '', iso === cursor ? 'cursor' : '']
+        const cls = ['day', p.m !== view.m ? 'out' : '', iso === today ? 'today' : '', iso === input.value ? 'sel' : '', keyNav && iso === cursor ? 'cursor' : '']
           .filter(Boolean).join(' ');
         const ok = inRange(iso);
         cells.push(h('button', { type: 'button', tabindex: '-1', class: cls, disabled: !ok, 'aria-label': iso, onclick: () => choose(iso) }, p.d));
@@ -1069,9 +1070,9 @@
       const todayOk = inRange(today);
       cal.replaceChildren(
         h('div', { class: 'cal-head' },
-          h('button', { type: 'button', tabindex: '-1', class: 'cal-nav', 'aria-label': 'Previous month', onclick: () => shiftMonth(-1) }, '‹'),
+          h('button', { type: 'button', tabindex: '-1', class: 'cal-nav', 'aria-label': 'Previous month', onclick: () => { keyNav = false; shiftMonth(-1); } }, '‹'),
           h('span', { class: 'cal-title' }, `${MONTHS[view.m]} ${view.y}`),
-          h('button', { type: 'button', tabindex: '-1', class: 'cal-nav', 'aria-label': 'Next month', onclick: () => shiftMonth(1) }, '›')),
+          h('button', { type: 'button', tabindex: '-1', class: 'cal-nav', 'aria-label': 'Next month', onclick: () => { keyNav = false; shiftMonth(1); } }, '›')),
         h('div', { class: 'cal-grid' },
           ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => h('span', { class: 'dow' }, d)),
           cells),
@@ -1112,6 +1113,7 @@
       cursor = validISO(input.value) ? input.value : (inRange(S.todayISO()) ? S.todayISO() : (input.max || input.min || S.todayISO()));
       const p = partsOf(cursor);
       view = { y: p.y, m: p.m };
+      keyNav = false;
       draw();
       cal.hidden = false;
       toggle.setAttribute('aria-expanded', 'true');
@@ -1128,8 +1130,8 @@
         return;
       }
       const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
-      if (step) { e.preventDefault(); moveCursor(step); }
-      else if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); shiftMonth(e.key === 'PageUp' ? -1 : 1); }
+      if (step) { e.preventDefault(); keyNav = true; moveCursor(step); }
+      else if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); keyNav = true; shiftMonth(e.key === 'PageUp' ? -1 : 1); }
       else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(cursor); }
       else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
     });
