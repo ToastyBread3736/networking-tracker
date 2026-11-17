@@ -235,7 +235,7 @@ code { background: var(--panel-2); border: 1px solid var(--line); border-radius:
 .repeat-group { display: flex; flex-direction: column; gap: 6px; }
 .group-label { font-size: 12px; color: var(--muted); }
 .repeat { display: flex; flex-direction: column; gap: 6px; }
-.repeat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.repeat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; position: relative; }
 @media (max-width: 560px) { .repeat-row { grid-template-columns: 1fr; } }
 
 /* ---------- resume upload (settings) ---------- */
@@ -377,3 +377,13 @@ button, input:not([type="checkbox"]):not([type="radio"]), select { padding-top: 
 
 /* student details: shown only when "Student" is checked */
 .student-box { padding: 12px; margin-top: -4px; border: 1px solid var(--line); border-radius: var(--radius); background: rgb(255 255 255 / .015); }
+
+/* "Add another … +" under repeatable rows, and the ✕ on added rows */
+.add-row {
+  align-self: flex-start; padding: 4px 10px; font-size: 13px;
+  background: transparent; border: 1px dashed var(--line); color: var(--muted);
+}
+.add-row:hover { background: transparent; border-color: var(--accent); color: var(--accent); }
+.row-x { position: absolute; right: 3px; bottom: 3px; width: 28px; height: calc(100% - 6px); max-height: 30px; padding: 0; display: grid; place-items: center; font-size: 13px; }
+.repeat-row:has(.row-x) input:last-of-type { padding-right: 32px; }
+.row-x:hover { color: var(--red); }

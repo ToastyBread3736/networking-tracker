@@ -70,6 +70,16 @@ Always:
 
   // The user's own student details (Settings), only while "I'm a student" is checked. Imported settings may be
   // malformed, so orgs are checked here.
+  // The user's work rows (Settings); older settings had a single `role` string instead.
+  function myWorkLine(me, prefix = '- ') {
+    const jobs = (Array.isArray(me.jobs) ? me.jobs : [])
+      .filter(j => j && typeof j === 'object')
+      .map(j => NT.store.jobLabel({ title: String(j.title || '').trim(), company: String(j.company || '').trim() }))
+      .filter(Boolean);
+    if (jobs.length) return `${prefix}Work: ${jobs.join('; ')}`;
+    return typeof me.role === 'string' && me.role.trim() ? `${prefix}Role: ${me.role.trim()}` : null;
+  }
+
   function myStudentLines(me, prefix = '- ') {
     if (!me.student) return [];
     const study = [me.major, me.university].filter(s => typeof s === 'string' && s.trim()).join(' at ');
@@ -107,12 +117,12 @@ Always:
       ``,
       `USER (me)`,
       me.name ? `- Name: ${me.name}` : null,
-      me.role ? `- Role: ${me.role}` : null,
+      myWorkLine(me),
       ...myStudentLines(me),
       me.location ? `- Location: ${me.location}` : null,
       me.interests ? `- Interests: ${me.interests}` : null,
       me.goal ? `- Current goal: ${me.goal}` : null,
-      me.bio ? `- Goals / context: ${me.bio}` : null,
+      me.bio ? `- Other context: ${me.bio}` : null,
       resume ? resumeBlock(p, me) : null,
       ``,
       bothStudents(p, me) ? `BOTH STUDENTS: yes (the user and this contact are both students; use college ideas, not corporate ones)` : null,
@@ -274,16 +284,17 @@ Judge only from the profile. Never invent facts about a contact. If a profile is
   }
 
   // The goal to rank against: the dedicated field, else the general "goals / anything" box.
-  const goalOf = me => (me.goal || '').trim() || (me.bio || '').trim();
+  // Only the dedicated Current goal field; "Anything the AI should know" is general context, not a goal.
+  const goalOf = me => (me.goal || '').trim();
 
   // `items` is [{ id, person }] with short ids to save tokens.
   function goalRankRequest(items, me) {
     const user = [
-      me.role ? `Role: ${me.role}` : null,
+      myWorkLine(me, ''),
       ...myStudentLines(me, ''),
       me.location ? `Location: ${me.location}` : null,
       me.interests ? `Interests: ${me.interests}` : null,
-      me.goal && me.bio ? `Other context: ${clip(me.bio, 400)}` : null,
+      me.bio ? `Other context: ${clip(me.bio, 400)}` : null,
     ].filter(Boolean).join('\n');
     return `USER'S GOAL: ${goalOf(me)}${user ? `\n${user}` : ''}
 

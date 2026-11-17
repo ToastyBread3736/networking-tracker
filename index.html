@@ -52,7 +52,7 @@
         <label>First name *<input name="firstName" required></label>
         <label>Last name<input name="lastName"></label>
         <div class="full repeat-group">
-          <div class="group-label">Work <small class="muted">— another row appears when you fill one in</small></div>
+          <div class="group-label">Work</div>
           <div id="jobs-rows" class="repeat"></div>
         </div>
         <label class="check full"><input type="checkbox" name="student"> Student</label>
@@ -265,7 +265,10 @@
       <div class="grid">
         <label>Your name<input name="name"></label>
         <label>Your location<input name="location" placeholder="Knoxville, TN"></label>
-        <label class="full">Role / school<input name="role" placeholder="CS student at UT Knoxville"></label>
+        <div class="full repeat-group">
+          <div class="group-label">Your work</div>
+          <div id="my-jobs-rows" class="repeat"></div>
+        </div>
         <label class="check full"><input type="checkbox" name="student"> I'm a student</label>
         <div id="my-student-fields" class="full grid student-box" hidden>
           <label>University<input name="university" placeholder="University of Tennessee, Knoxville"></label>
@@ -279,8 +282,8 @@
         <label class="full"><span>Current goal <small class="muted">— used by "Sort: Goal relevance"</small></span>
           <input name="goal" maxlength="200" placeholder="Summer 2027 internship in nuclear detection">
         </label>
-        <label class="full">Goals / anything the AI should know
-          <textarea name="bio" rows="2" placeholder="Looking for a PM internship for summer 2027…"></textarea>
+        <label class="full">Anything the AI should know
+          <textarea name="bio" rows="2" placeholder="Graduating May 2028, prefer meeting in person, trying to get more involved in research…"></textarea>
         </label>
       </div>
       <h3>Resume <small class="muted">— lets drafts mention relevant experience</small></h3>

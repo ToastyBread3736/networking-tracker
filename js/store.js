@@ -7,6 +7,7 @@
 
   const DEFAULT_SETTINGS = {
     name: '', location: '', role: '', interests: '', goal: '', bio: '',
+    jobs: [], // [{ title, company }], like a contact's Work rows (older settings used a single `role` string)
     student: false, university: '', major: '', orgs: [], // same student fields as a contact
     exFriendly: '', exProfessional: '', exCasual: '', // default writing examples per tone
     resume: '', // plain text, extracted from an uploaded PDF/TXT or pasted

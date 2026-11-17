@@ -345,32 +345,43 @@
   }
 
   // ---------- repeatable rows (work, student orgs) ----------
-  // There is always one empty row at the end. Typing in it adds a new one; empty rows in the middle are removed on blur.
+  // The first row is always there. "Add another … +" adds a row (up to `max`); added rows get an ✕ to remove them.
+  const JOB_FIELDS = (title, company) => [['title', 'Job title', title], ['company', 'Company / org', company]];
+  const ORG_FIELDS = [['name', 'Organization', 'ACM'], ['role', 'Leadership position', 'President (blank = member)']];
   const REPEAT = {
-    jobs: { box: '#jobs-rows', max: 3, fields: [['title', 'Job title', 'Professor of CS'], ['company', 'Company / org', 'UT Knoxville']] },
-    orgs: { box: '#orgs-rows', max: 3, fields: [['name', 'Organization', 'ACM'], ['role', 'Leadership position', 'President (blank = member)']] },
-    myOrgs: { box: '#my-orgs-rows', max: 3, fields: [['name', 'Organization', 'ACM'], ['role', 'Leadership position', 'President (blank = member)']] },
+    jobs: { box: '#jobs-rows', max: 3, add: 'Add another role', fields: JOB_FIELDS('Professor of CS', 'UT Knoxville') },
+    orgs: { box: '#orgs-rows', max: 3, add: 'Add another organization', fields: ORG_FIELDS },
+    myJobs: { box: '#my-jobs-rows', max: 3, add: 'Add another role', fields: JOB_FIELDS('Research Assistant', 'Oak Ridge National Laboratory') },
+    myOrgs: { box: '#my-orgs-rows', max: 3, add: 'Add another organization', fields: ORG_FIELDS },
   };
 
-  function repeatRow(cfg, val = {}) {
-    return h('div', { class: 'repeat-row' },
-      cfg.fields.map(([k, label, ph]) => h('input', { 'data-k': k, 'aria-label': label, placeholder: ph, value: val[k] || '' })));
+  function repeatRow(cfg, val = {}, removable = false) {
+    const row = h('div', { class: 'repeat-row' },
+      cfg.fields.map(([k, label, ph]) => h('input', { 'data-k': k, 'aria-label': label, placeholder: ph, value: val[k] || '' })),
+      removable
+        ? h('button', { type: 'button', class: 'ghost row-x', title: 'Remove', 'aria-label': 'Remove this row', onclick: () => removeRow(cfg, row) }, '✕')
+        : null);
+    return row;
   }
-  const rowEmpty = r => [...r.querySelectorAll('input')].every(i => !i.value.trim());
-
-  function ensureTrailing(cfg) {
+  function updateAddBtn(cfg) { cfg.addBtn.hidden = $(cfg.box).children.length >= cfg.max; }
+  function addRow(cfg) {
     const box = $(cfg.box);
-    const last = box.lastElementChild;
-    if ((!last || !rowEmpty(last)) && box.children.length < cfg.max) box.append(repeatRow(cfg));
+    if (box.children.length >= cfg.max) return;
+    const row = repeatRow(cfg, {}, true);
+    box.append(row);
+    updateAddBtn(cfg);
+    row.querySelector('input').focus();
   }
-  function pruneEmpty(cfg) {
-    const rows = [...$(cfg.box).children];
-    rows.slice(0, -1).forEach(r => { if (rowEmpty(r) && !r.contains(document.activeElement)) r.remove(); });
-    ensureTrailing(cfg);
+  function removeRow(cfg, row) {
+    row.remove();
+    updateAddBtn(cfg);
+    cfg.addBtn.focus();
   }
   function fillRepeat(cfg, items) {
-    $(cfg.box).replaceChildren(...(items || []).map(v => repeatRow(cfg, v)));
-    ensureTrailing(cfg);
+    const list = (items || []).slice(0, cfg.max);
+    if (!list.length) list.push({});
+    $(cfg.box).replaceChildren(...list.map((v, i) => repeatRow(cfg, v, i > 0)));
+    updateAddBtn(cfg);
   }
   function readRepeat(cfg) {
     return [...$(cfg.box).children]
@@ -378,9 +389,8 @@
       .filter(o => Object.values(o).some(Boolean));
   }
   for (const cfg of Object.values(REPEAT)) {
-    const box = $(cfg.box);
-    box.addEventListener('input', () => ensureTrailing(cfg));
-    box.addEventListener('focusout', () => setTimeout(() => pruneEmpty(cfg)));
+    cfg.addBtn = h('button', { type: 'button', class: 'add-row', onclick: () => addRow(cfg) }, `${cfg.add} +`);
+    $(cfg.box).after(cfg.addBtn);
   }
 
   function openPerson(id) {
@@ -717,7 +727,10 @@
   const fs = $('#form-settings');
   $('#btn-settings').addEventListener('click', () => {
     const s = S.getSettings();
-    for (const k of ['name', 'location', 'role', 'interests', 'goal', 'bio', 'university', 'major', 'resume', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
+    // Older settings had one "Role / school" string; show it as the first work row until saved.
+    const myJobs = Array.isArray(s.jobs) && s.jobs.length ? s.jobs : s.role ? [{ title: s.role, company: '' }] : [];
+    fillRepeat(REPEAT.myJobs, myJobs.filter(j => j && typeof j === 'object'));
+    for (const k of ['name', 'location', 'interests', 'goal', 'bio', 'university', 'major', 'resume', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
       fs.elements[k].value = s[k] || '';
     }
     fs.elements.student.checked = !!s.student;
@@ -805,6 +818,8 @@
     // Like a contact's: kept when unchecked (so re-checking restores them) but only used while checked.
     raw.student = fs.elements.student.checked;
     raw.orgs = readRepeat(REPEAT.myOrgs).filter(o => o.name).slice(0, 3);
+    raw.jobs = readRepeat(REPEAT.myJobs).slice(0, 3);
+    raw.role = ''; // replaced by the work rows above
     S.saveSettings(raw);
     if (dlgIdeas.open) updateExamplesSource();
     dlgSettings.close();
