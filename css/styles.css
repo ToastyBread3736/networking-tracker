@@ -306,3 +306,25 @@ dialog::-webkit-scrollbar-track { margin-block: 12px; }
 @supports not selector(::-webkit-scrollbar) {
   * { scrollbar-width: thin; scrollbar-color: #323b48 transparent; }
 }
+
+/* themed select: a button that looks like the select boxes and opens the same menu as the pick-or-type fields */
+.select-btn {
+  width: 100%; text-align: left; font-size: 14px; color: var(--text);
+  padding-right: 30px; overflow: hidden; text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238b96a5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+}
+.select-btn:hover { background-color: var(--panel-2); border-color: #3a4352; }
+.select-btn[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px rgb(124 156 255 / .2); }
+.inline .select-btn { flex: 1 1 auto; min-width: 0; }
+.inline input[name="frequencyCustom"] { flex: 0 0 90px; }
+
+/* The generic button:hover rule uses the `background` shorthand, which wipes the chevron image (and the button
+   transition then slides it back in from the corner). Re-state the image on hover and only animate the color. */
+.combo-toggle, .select-btn { transition: background-color .12s, border-color .12s; }
+.combo-toggle:hover {
+  background: #232a35 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23e6edf3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center;
+}
+.select-btn:hover {
+  background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23e6edf3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;
+}

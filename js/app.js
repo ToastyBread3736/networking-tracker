@@ -943,6 +943,86 @@
   }
   document.querySelectorAll('input[list]').forEach(combobox);
 
+  // Same themed menu for a fixed list (a <select>). The real select stays in the form, hidden, so FormData,
+  // change listeners and code that sets .value keep working; a button shows the choice and opens the menu.
+  function themedSelect(select) {
+    const btn = h('button', { type: 'button', class: 'select-btn', 'aria-haspopup': 'listbox', 'aria-expanded': 'false' });
+    select.before(btn);
+    select.hidden = true;
+    const menu = h('ul', { class: 'combo-menu', role: 'listbox', hidden: true });
+    let items = [], active = -1;
+
+    const label = () => { btn.textContent = select.selectedOptions[0]?.textContent || ''; };
+    // Keep the button in sync when code sets select.value directly (e.g. when a person is opened for editing).
+    const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+    Object.defineProperty(select, 'value', {
+      get() { return desc.get.call(this); },
+      set(v) { desc.set.call(this, v); label(); },
+    });
+    label();
+
+    function place() {
+      const r = btn.getBoundingClientRect();
+      menu.style.left = r.left + 'px';
+      menu.style.width = r.width + 'px';
+      const below = window.innerHeight - r.bottom - 8;
+      const height = Math.min(menu.scrollHeight, 240);
+      if (below < height && r.top > below) { menu.style.top = ''; menu.style.bottom = (window.innerHeight - r.top + 4) + 'px'; }
+      else { menu.style.bottom = ''; menu.style.top = (r.bottom + 4) + 'px'; }
+    }
+    function highlight() {
+      items.forEach((li, i) => li.classList.toggle('active', i === active));
+      if (items[active]) items[active].scrollIntoView({ block: 'nearest' });
+    }
+    function open() {
+      if (!menu.isConnected) (btn.closest('dialog') || document.body).append(menu);
+      const opts = [...select.options];
+      items = opts.map((o, i) => h('li', {
+        role: 'option',
+        class: o.selected ? 'current' : null,
+        onmousedown: e => { e.preventDefault(); pick(i); },
+      }, o.textContent));
+      menu.replaceChildren(...items);
+      active = select.selectedIndex;
+      menu.hidden = false;
+      btn.setAttribute('aria-expanded', 'true');
+      highlight();
+      place();
+    }
+    function close() { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+    function pick(i) {
+      const changed = select.selectedIndex !== i;
+      select.selectedIndex = i;
+      label();
+      close();
+      btn.focus();
+      if (changed) select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    btn.addEventListener('mousedown', e => { e.preventDefault(); btn.focus(); menu.hidden ? open() : close(); });
+    btn.addEventListener('click', e => { if (e.detail === 0 && menu.hidden) open(); }); // keyboard "click" (Enter/Space)
+    btn.addEventListener('blur', close);
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (menu.hidden) { open(); return; }
+        const n = items.length;
+        active = e.key === 'ArrowDown' ? (active + 1) % n : (active - 1 + n) % n;
+        highlight();
+      } else if ((e.key === 'Enter' || e.key === ' ') && !menu.hidden) {
+        e.preventDefault();
+        if (items[active]) pick(active);
+      } else if (e.key === 'Escape' && !menu.hidden) {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      } else if (e.key === 'Tab') close();
+    });
+    document.addEventListener('scroll', e => { if (!menu.hidden && e.target !== menu) close(); }, true);
+    window.addEventListener('resize', close);
+  }
+  themedSelect(fp.frequencyPreset);
+
   // Re-render at midnight-ish so "due" labels stay current if the tab stays open.
   setInterval(render, 60 * 60 * 1000);
 
