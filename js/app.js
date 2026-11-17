@@ -4,7 +4,10 @@
   const $ = sel => document.querySelector(sel);
 
   let people = S.loadPeople();
-  const view = { query: '', filter: 'all', sort: 'due' };
+  // tab: 'network' (your connections) or 'potential' (level-0 people you want to connect with)
+  const view = { query: '', filter: 'all', sort: 'due', tab: 'network' };
+  const inTab = p => (view.tab === 'potential' ? p.prospect : !p.prospect);
+  const network = () => people.filter(p => !p.prospect);
 
   // ---------- helpers ----------
   function h(tag, attrs = {}, ...children) {
@@ -57,21 +60,27 @@
   function matches(p, q) {
     if (!q) return true;
     if (q.startsWith('#')) return p.tags.some(t => t.startsWith(q.slice(1)));
-    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...S.studentOrgs(p).flatMap(o => [o.name, o.role]), S.studyLabel(p, ' '), p.student ? 'student' : '', p.location, p.relationship, p.interests, p.notes, p.email, p.phone, ...p.tags, ...p.history.flatMap(x => [x.type, x.note])]
+    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...S.studentOrgs(p).flatMap(o => [o.name, o.role]), S.studyLabel(p, ' '), p.student ? 'student' : '', p.location, p.relationship, p.interests, p.notes, p.metAt, p.ask, p.email, p.phone, ...p.tags, ...p.history.flatMap(x => [x.type, x.note])]
       .join(' ').toLowerCase();
     return q.split(/\s+/).every(w => hay.includes(w));
   }
 
   function visible() {
     const q = view.query.trim().toLowerCase();
-    let list = people.filter(p => matches(p, q));
-    if (view.filter === 'overdue') list = list.filter(p => S.dueInfo(p).days < 0);
-    else if (view.filter === 'soon') list = list.filter(p => S.dueInfo(p).days <= 7);
-    else if (view.filter === 'build' || view.filter === 'maintain') list = list.filter(p => p.mode === view.filter);
+    let list = people.filter(p => inTab(p) && matches(p, q));
+    if (view.tab === 'network') { // due dates and Build/Maintain don't apply to potential connections
+      if (view.filter === 'overdue') list = list.filter(p => S.dueInfo(p).days < 0);
+      else if (view.filter === 'soon') list = list.filter(p => S.dueInfo(p).days <= 7);
+      else if (view.filter === 'build' || view.filter === 'maintain') list = list.filter(p => p.mode === view.filter);
+    }
     const score = p => goalView.scores.get(p.id)?.score ?? -1; // unranked people go last
+    // Potential connections: most recently met first; people you haven't met yet after, newest added first.
+    const byMet = (a, b) => (b.metDate || '').localeCompare(a.metDate || '') || (b.createdAt || '').localeCompare(a.createdAt || '');
+    const tiebreak = view.tab === 'potential' ? byMet : (a, b) => S.dueInfo(a).days - S.dueInfo(b).days;
     const cmp = {
-      goal: (a, b) => score(b) - score(a) || S.dueInfo(a).days - S.dueInfo(b).days,
+      goal: (a, b) => score(b) - score(a) || tiebreak(a, b),
       due: (a, b) => S.dueInfo(a).days - S.dueInfo(b).days,
+      met: byMet,
       name: (a, b) => fullName(a).localeCompare(fullName(b)),
       level: (a, b) => b.level - a.level || fullName(a).localeCompare(fullName(b)),
     }[view.sort];
@@ -99,7 +108,48 @@
     return h('span', { class: `goal-score ${tier}`, title: `Goal relevance ${g.score}/100: ${g.reason}` }, g.score);
   }
 
+  function tagsCell(p) {
+    return h('span', { class: 'tags col-opt' },
+      p.tags.map(t => h('span', { class: 'tag', 'data-t': t, title: `Filter by #${t}`, onclick: () => setQuery('#' + t) }, t)),
+      p.tags.length ? h('span', { class: 'tag more', hidden: true }) : null);
+  }
+  function whoCell(p) {
+    const g = view.sort === 'goal' ? goalView.scores.get(p.id) : null;
+    return h('div', { class: 'who', title: 'Edit', onclick: () => openPerson(p.id) },
+      h('span', { class: 'name' }, fullName(p), goalBadge(p)),
+      g && g.reason
+        ? h('span', { class: 'job reason', title: `${g.reason}\n\n${allRoles(p)}` }, g.reason)
+        : h('span', { class: 'job', title: allRoles(p) }, subtitle(p)));
+  }
+  const shortDate = iso => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const sameYear = y === new Date().getFullYear();
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+  };
+
+  const LIST_HEAD = {
+    network: [['Next'], ['Person'], ['Location', 'col-opt'], ['Level'], ['Relationship', 'col-opt'], ['Goal'], ['Tags', 'col-opt'], ['']],
+    potential: [['Met'], ['Person'], ['Where you met', 'col-opt'], ['Your ask'], ['Tags', 'col-opt'], ['']],
+  };
+
+  function prospectRow(p) {
+    return h('div', { class: 'row prospect' },
+      p.metDate
+        ? h('span', { class: 'due met', title: `Contact date: ${p.metDate}` }, shortDate(p.metDate))
+        : h('span', { class: 'due notmet', title: "You haven't met yet" }, 'Not met'),
+      whoCell(p),
+      h('span', { class: 'loc col-opt', title: p.metAt }, p.metAt || '—'),
+      h('span', { class: 'ask', title: p.ask }, p.ask || '—'),
+      tagsCell(p),
+      h('div', { class: 'actions' },
+        h('button', { class: 'ghost', title: 'Move to your network', onclick: () => promote(p.id) }, '→'),
+        h('button', { class: 'ghost', title: 'First-contact ideas & drafts', onclick: () => openIdeas(p.id) }, '✦'),
+        h('button', { class: 'ghost', title: 'Edit', onclick: () => openPerson(p.id) }, '✎')),
+    );
+  }
+
   function row(p) {
+    if (p.prospect) return prospectRow(p);
     const d = S.dueInfo(p);
     const g = view.sort === 'goal' ? goalView.scores.get(p.id) : null;
     return h('div', { class: 'row' },
@@ -145,7 +195,8 @@
 
   function renderGoalBar() {
     const bar = $('#goal-bar');
-    bar.hidden = view.sort !== 'goal' || !people.length;
+    const tabPeople = people.filter(inTab); // rank and count only the tab you are on
+    bar.hidden = view.sort !== 'goal' || !tabPeople.length;
     if (bar.hidden) return;
     if (!goalView.goal) {
       bar.replaceChildren(
@@ -153,12 +204,12 @@
         h('button', { type: 'button', onclick: () => $('#btn-settings').click() }, 'Open Settings'));
       return;
     }
-    const ranked = goalView.scores.size;
-    const todo = people.length - ranked;
+    const ranked = tabPeople.filter(p => goalView.scores.has(p.id)).length;
+    const todo = tabPeople.length - ranked;
     const label = !todo ? 'Re-rank all' : ranked ? `Rank ${todo} new or edited` : `Rank ${todo} ${todo === 1 ? 'person' : 'people'}`;
     bar.replaceChildren(
       h('div', { class: 'goal-text', title: goalView.goal }, h('span', { class: 'muted' }, 'Goal: '), goalView.goal),
-      h('span', { class: 'muted small goal-count' }, `${ranked} of ${people.length} ranked`),
+      h('span', { class: 'muted small goal-count' }, `${ranked} of ${tabPeople.length} ranked`),
       h('button', { type: 'button', class: todo ? 'primary' : null, disabled: ranking, onclick: () => rankGoal(todo ? 'new' : 'all') }, label));
     if (rankMsg) bar.append(h('span', { class: 'small' + (rankMsg.error ? ' error' : '') }, ranking ? h('span', { class: 'spinner' }) : null, rankMsg.text));
   }
@@ -167,7 +218,8 @@
     const me = S.getSettings();
     const goal = NT.prompts.goalOf(me);
     if (!goal || ranking) return;
-    const todo = which === 'all' ? people.slice() : people.filter(p => !goalView.scores.has(p.id));
+    const tabPeople = people.filter(inTab);
+    const todo = which === 'all' ? tabPeople : tabPeople.filter(p => !goalView.scores.has(p.id));
     if (!todo.length) return;
     ranking = true;
     rankMsg = { text: `Ranking ${todo.length} ${todo.length === 1 ? 'person' : 'people'}…` };
@@ -177,7 +229,7 @@
         if (total > done && done > 0) { rankMsg = { text: `Ranking… ${done} of ${total}` }; renderGoalBar(); }
       });
       const saved = S.loadGoalRank();
-      const scores = which !== 'all' && saved.goal === goal ? saved.scores : {};
+      const scores = saved.goal === goal ? saved.scores : {}; // re-ranking one tab keeps the other tab's scores
       for (const id of Object.keys(scores)) if (!byId(id)) delete scores[id]; // forget deleted people
       // Signed with the profile as it was sent; if it was edited meanwhile, that person shows as unranked.
       for (const p of todo) if (res[p.id]) scores[p.id] = { ...res[p.id], sig: S.hash(NT.prompts.rankSummary(p)) };
@@ -195,24 +247,46 @@
   function render() {
     goalView = computeGoalView();
     renderGoalBar();
+    const potential = view.tab === 'potential';
+    const net = network();
     const list = visible();
     const box = $('#list');
-    document.querySelector('.list-head').hidden = !list.length;
-    if (!people.length) {
-      box.replaceChildren(h('div', { class: 'empty' },
-        h('h2', {}, 'Your network starts here'),
-        h('p', {}, 'Add the people you want to stay in touch with. Each one gets a touchpoint schedule and AI-suggested ways to connect.'),
-        h('button', { class: 'primary', onclick: () => openPerson() }, '+ Add your first person')));
+
+    // tabs, list header, and the controls that only apply to one tab
+    document.querySelectorAll('.tabs .tab').forEach(t => {
+      const on = t.dataset.tab === view.tab;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on);
+      t.querySelector('.tab-count').textContent = t.dataset.tab === 'potential' ? people.length - net.length : net.length;
+    });
+    const head = document.querySelector('.list-head');
+    head.className = 'list-head' + (potential ? ' prospect' : '');
+    head.replaceChildren(...LIST_HEAD[view.tab].map(([t, c]) => h('span', { class: c || null }, t)));
+    head.hidden = !list.length;
+    filterBtn.hidden = potential;
+    $('#btn-add').textContent = potential ? '+ Add potential connection' : '+ Add person';
+
+    const tabCount = potential ? people.length - net.length : net.length;
+    if (!tabCount) {
+      box.replaceChildren(potential
+        ? h('div', { class: 'empty' },
+            h('h2', {}, 'People you want to meet'),
+            h('p', {}, "Add people you just met or haven't met yet: someone you found on LinkedIn, a business card from a career fair, a speaker you want to reach. Note where you met and what you'd like from the connection."),
+            h('button', { class: 'primary', onclick: () => openPerson(null, { prospect: true }) }, '+ Add a potential connection'))
+        : h('div', { class: 'empty' },
+            h('h2', {}, 'Your network starts here'),
+            h('p', {}, 'Add the people you want to stay in touch with. Each one gets a touchpoint schedule and AI-suggested ways to connect.'),
+            h('button', { class: 'primary', onclick: () => openPerson() }, '+ Add your first person')));
     } else if (!list.length) {
       box.replaceChildren(h('div', { class: 'empty' }, h('p', {}, 'No one matches that search or filter.')));
     } else {
       box.replaceChildren(...list.map(row));
       fitAllTags();
     }
-    const overdue = people.filter(p => S.dueInfo(p).days < 0).length;
-    const soon = people.filter(p => { const d = S.dueInfo(p).days; return d >= 0 && d <= 7; }).length;
+    const overdue = net.filter(p => S.dueInfo(p).days < 0).length;
+    const soon = net.filter(p => { const d = S.dueInfo(p).days; return d >= 0 && d <= 7; }).length;
     $('#stats').replaceChildren(
-      h('span', {}, h('b', {}, people.length), ' people'),
+      h('span', {}, h('b', {}, net.length), ' people'),
       h('span', { class: overdue ? 'red' : '' }, h('b', {}, overdue), ' overdue'),
       h('span', { class: soon ? 'amber' : '' }, h('b', {}, soon), ' this week'));
   }
@@ -393,16 +467,29 @@
     $(cfg.box).after(cfg.addBtn);
   }
 
-  function openPerson(id) {
+  // A potential connection uses the same form with Where you met / Contact date / Your ask instead of the
+  // touchpoint schedule, level, Build/Maintain, interests and touchpoints. Hidden fields keep their values.
+  let editingProspect = false;
+  function setFormKind(prospect) {
+    editingProspect = prospect;
+    fp.querySelectorAll('.net-only').forEach(el => (el.hidden = prospect));
+    fp.querySelectorAll('.prospect-only').forEach(el => (el.hidden = !prospect));
+  }
+
+  function openPerson(id, { prospect = false } = {}) {
     editingId = id || null;
     const p = id ? byId(id) : null;
     fp.reset();
-    $('#person-title').textContent = p ? `Edit ${fullName(p)}` : 'Add person';
+    const isProspect = p ? p.prospect : prospect;
+    setFormKind(isProspect);
+    $('#person-title').textContent = p ? `Edit ${fullName(p)}` : isProspect ? 'Add potential connection' : 'Add person';
     $('#btn-delete').hidden = !p;
-    const v = p || { level: 3, mode: 'build', frequencyDays: 90, lastTouch: S.todayISO(), tags: [] };
-    for (const k of ['firstName', 'lastName', 'location', 'email', 'phone', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes']) {
+    $('#btn-promote').hidden = !(p && isProspect);
+    const v = p || { level: 3, mode: 'build', frequencyDays: 90, lastTouch: isProspect ? '' : S.todayISO(), tags: [] };
+    for (const k of ['firstName', 'lastName', 'location', 'email', 'phone', 'linkedin', 'relationship', 'lastTouch', 'interests', 'notes', 'metAt', 'metDate', 'ask']) {
       fp.elements[k].value = v[k] || '';
     }
+    fp.elements.metDate.max = S.todayISO();
     fillRepeat(REPEAT.jobs, v.jobs);
     fillRepeat(REPEAT.orgs, v.orgs);
     fp.elements.university.value = v.university || '';
@@ -410,14 +497,14 @@
     fp.elements.student.checked = !!v.student;
     updateStudentFields();
     fp.tags.value = (v.tags || []).join(', ');
-    fp.querySelector(`input[name=level][value="${v.level}"]`).checked = true;
+    fp.querySelector(`input[name=level][value="${v.level || 3}"]`).checked = true; // potential = level 0 (no radio)
     fp.querySelector(`input[name=mode][value="${v.mode}"]`).checked = true;
     const f = String(v.frequencyDays);
     fp.frequencyPreset.value = PRESETS.includes(f) ? f : 'custom';
     fp.frequencyCustom.value = PRESETS.includes(f) ? '' : f;
     updateFreqCustom();
     updateLevelHint();
-    if (p) renderTimeline(p);
+    if (p && !isProspect) renderTimeline(p);
     else $('#person-touches').hidden = true;
     dlgPerson.showModal();
     fp.firstName.focus();
@@ -441,10 +528,12 @@
     raw.jobs = readRepeat(REPEAT.jobs);
     raw.orgs = readRepeat(REPEAT.orgs);
     raw.student = fp.elements.student.checked;
+    raw.prospect = editingProspect;
     const existing = editingId ? byId(editingId) : null;
     if (existing) {
       raw.id = existing.id; raw.createdAt = existing.createdAt; raw.history = existing.history;
     }
+    if (editingProspect) raw.lastTouch = ''; // no touchpoint schedule until they're moved to the network
     const p = S.normalize(raw);
     if (!p) return;
     if (existing) people[people.indexOf(existing)] = p;
@@ -455,6 +544,37 @@
   });
 
   $('#btn-person-log').addEventListener('click', () => openLog(editingId));
+
+  // Potential → Network: becomes a level-1 connection whose touchpoint clock starts at the contact date
+  // (or today), then opens in the full form so you can set the level, frequency and Build/Maintain.
+  function promote(id) {
+    const p = byId(id);
+    if (!p || !p.prospect) return;
+    const before = { ...p };
+    const moved = S.normalize({ ...p, prospect: false, level: 1, mode: 'build', lastTouch: p.metDate || S.todayISO() });
+    people[people.indexOf(p)] = moved;
+    persist();
+    if (dlgPerson.open) dlgPerson.close();
+    setTab('network');
+    openPerson(moved.id);
+    toast(`Moved ${moved.firstName} to your network`, {
+      label: 'Undo',
+      fn: () => {
+        const i = people.findIndex(x => x.id === id);
+        if (i < 0) return;
+        people[i] = S.normalize(before);
+        persist();
+        if (dlgPerson.open && editingId === id) dlgPerson.close();
+        setTab('potential');
+      },
+    });
+  }
+  $('#btn-promote').addEventListener('click', () => {
+    if (!fp.reportValidity()) return;
+    const id = editingId;
+    fp.requestSubmit(); // keep any edits made in the form before moving them
+    promote(id);
+  });
 
   $('#btn-delete').addEventListener('click', () => {
     const p = byId(editingId);
@@ -486,12 +606,16 @@
     $('#btn-gen-ideas').textContent = '✦ Suggest ideas';
     $('#ideas-name').textContent = fullName(p);
     const d = S.dueInfo(p);
-    $('#ideas-sub').textContent = [
-      p.jobs.map(j => S.jobLabel(j)).join(' & '),
-      p.relationship, `Level ${p.level}`,
-      `last touch ${S.sinceLabel(p)}`, d.label.toLowerCase(),
-    ].filter(Boolean).join(' · ');
-    dlgIdeas.querySelector(`input[name=ideasMode][value="${p.mode}"]`).checked = true;
+    $('#ideas-sub').textContent = (p.prospect
+      ? [p.jobs.map(j => S.jobLabel(j)).join(' & '), 'Potential connection',
+         p.metAt ? `met at ${p.metAt}` : null, p.metDate ? `on ${p.metDate}` : "haven't met"]
+      : [p.jobs.map(j => S.jobLabel(j)).join(' & '), p.relationship, `Level ${p.level}`,
+         `last touch ${S.sinceLabel(p)}`, d.label.toLowerCase()]
+    ).filter(Boolean).join(' · ');
+    // Potential connections only get first-contact ideas: no Build/Maintain choice and no touchpoint logging yet.
+    $('#ideas-mode').hidden = p.prospect;
+    $('#btn-log-sent').hidden = p.prospect;
+    dlgIdeas.querySelector(`input[name=ideasMode][value="${p.prospect ? 'build' : p.mode}"]`).checked = true;
     $('#ideas-focus').value = '';
     $('#ideas-custom').value = '';
     $('#ideas-list').replaceChildren();
@@ -515,6 +639,7 @@
     const rel = (p.relationship || '').toLowerCase();
     if (/friend/.test(rel) || (/peer|classmate/.test(rel) && p.level >= 4)) return 'casual';
     if (p.student && S.getSettings().student) return 'casual'; // both students
+    if (p.prospect) return 'professional'; // a first message to someone you barely know
     if (/professional|senior|mentor|manager|recruiter|professor|dr\b/.test(rel)) return 'professional';
     return 'friendly';
   }
@@ -881,13 +1006,13 @@
 
   // ---------- wiring ----------
   document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
-  $('#btn-add').addEventListener('click', () => openPerson());
+  $('#btn-add').addEventListener('click', () => openPerson(null, { prospect: view.tab === 'potential' }));
   $('#search').addEventListener('input', e => { view.query = e.target.value; render(); });
   $('#filter').addEventListener('change', e => { view.filter = e.target.value; render(); });
   $('#sort').addEventListener('change', e => { view.sort = e.target.value; render(); });
   document.addEventListener('keydown', e => {
     if (e.key === '/' && !e.target.closest('input, textarea, select, dialog')) { e.preventDefault(); $('#search').focus(); }
-    if (e.key === 'n' && !e.target.closest('input, textarea, select, dialog')) { e.preventDefault(); openPerson(); }
+    if (e.key === 'n' && !e.target.closest('input, textarea, select, dialog')) { e.preventDefault(); openPerson(null, { prospect: view.tab === 'potential' }); }
   });
   // ---------- pick-or-type dropdowns ----------
   // Replaces a native <datalist> (unstyled, misaligned, and it hides every option that doesn't match the text)
@@ -1024,14 +1149,16 @@
     }
     function open() {
       if (!menu.isConnected) (btn.closest('dialog') || document.body).append(menu);
-      const opts = [...select.options];
-      items = opts.map((o, i) => h('li', {
+      // Options marked hidden (e.g. sorts that don't apply to the current tab) are left out of the menu.
+      const opts = [...select.options].map((o, i) => ({ o, i })).filter(x => !x.o.hidden);
+      items = opts.map(({ o, i }) => h('li', {
         role: 'option',
         class: o.selected ? 'current' : null,
+        'data-index': i,
         onmousedown: e => { e.preventDefault(); pick(i); },
       }, o.textContent));
       menu.replaceChildren(...items);
-      active = select.selectedIndex;
+      active = opts.findIndex(x => x.o.selected);
       menu.hidden = false;
       btn.setAttribute('aria-expanded', 'true');
       highlight();
@@ -1059,7 +1186,7 @@
         highlight();
       } else if ((e.key === 'Enter' || e.key === ' ') && !menu.hidden) {
         e.preventDefault();
-        if (items[active]) pick(active);
+        if (items[active]) pick(Number(items[active].dataset.index));
       } else if (e.key === 'Escape' && !menu.hidden) {
         e.preventDefault();
         e.stopPropagation();
@@ -1068,10 +1195,27 @@
     });
     document.addEventListener('scroll', e => { if (!menu.hidden && e.target !== menu) close(); }, true);
     window.addEventListener('resize', close);
+    return btn;
   }
   themedSelect(fp.frequencyPreset);
-  themedSelect($('#filter'), { fit: true });
+  const filterBtn = themedSelect($('#filter'), { fit: true });
   themedSelect($('#sort'), { fit: true });
+
+  // ---------- Network / Potential tabs ----------
+  // Each tab keeps its own sort; sorts that don't apply to a tab (Next touchpoint, Level vs. Contact date) are hidden.
+  const tabSort = { network: 'due', potential: 'met' };
+  function setTab(tab) {
+    if (tab === view.tab) return;
+    tabSort[view.tab] = view.sort;
+    view.tab = tab;
+    const sortSel = $('#sort');
+    for (const o of sortSel.options) o.hidden = !!o.dataset.tab && o.dataset.tab !== tab;
+    view.sort = tabSort[tab];
+    sortSel.value = view.sort;
+    render();
+  }
+  document.querySelectorAll('.tabs .tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+  for (const o of $('#sort').options) o.hidden = !!o.dataset.tab && o.dataset.tab !== view.tab;
 
   // ---------- themed calendar for date fields ----------
   // The real <input type="date"> stays (typing a date still works, and it's what gets saved); this popup only fills

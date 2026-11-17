@@ -15,6 +15,7 @@
   };
 
   const LEVELS = {
+    0: "Potential connection — just met or haven't met yet",
     1: 'Just met — they may not remember you',
     2: 'Acquaintance — a conversation or two',
     3: 'Contact — you know each other, occasional exchanges',
@@ -70,7 +71,10 @@
     let tags = raw.tags;
     if (typeof tags === 'string') tags = tags.split(',');
     tags = Array.isArray(tags) ? [...new Set(tags.map(t => str(t, 40).toLowerCase()).filter(Boolean))] : [];
-    const level = Math.min(5, Math.max(1, parseInt(raw.level, 10) || 3));
+    // Potential connections (the Potential tab) are level 0 and have no touchpoint schedule yet.
+    const prospect = raw.prospect === true;
+    const level = prospect ? 0 : Math.min(5, Math.max(1, parseInt(raw.level, 10) || 3));
+    const metDate = /^\d{4}-\d{2}-\d{2}$/.test(raw.metDate || '') ? raw.metDate : '';
     const freq = Math.min(3650, Math.max(1, parseInt(raw.frequencyDays, 10) || 90));
     const lastTouch = /^\d{4}-\d{2}-\d{2}$/.test(raw.lastTouch || '') ? raw.lastTouch : '';
     // Repeatable entries. Older data stored a single job/company; fold that into jobs[0].
@@ -114,6 +118,10 @@
       phone: str(raw.phone, 40),
       linkedin: str(raw.linkedin, 300),
       tags,
+      prospect,
+      metAt: str(raw.metAt, 200),   // where you met (potential connections)
+      metDate,                       // contact date, if you've met
+      ask: str(raw.ask, 1000),       // what you want from the connection
       level,
       relationship: str(raw.relationship, 80),
       mode: raw.mode === 'maintain' ? 'maintain' : 'build',

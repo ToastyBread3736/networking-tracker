@@ -22,9 +22,10 @@
         <option value="maintain">Maintaining</option>
       </select>
       <select id="sort" aria-label="Sort">
-        <option value="due">Next touchpoint</option>
+        <option value="due" data-tab="network">Next touchpoint</option>
+        <option value="met" data-tab="potential">Contact date</option>
         <option value="name">Name</option>
-        <option value="level">Level</option>
+        <option value="level" data-tab="network">Level</option>
         <option value="goal">Goal relevance ✦</option>
       </select>
       <button id="btn-add" class="primary">+ Add person</button>
@@ -36,11 +37,12 @@
   </header>
 
   <main>
+    <nav class="tabs" role="tablist" aria-label="Lists">
+      <button type="button" role="tab" class="tab" data-tab="network">Network <span class="tab-count"></span></button>
+      <button type="button" role="tab" class="tab" data-tab="potential">Potential connections <span class="tab-count"></span></button>
+    </nav>
     <div id="goal-bar" class="goal-bar" hidden></div>
-    <div class="list-head" aria-hidden="true">
-      <span>Next</span><span>Person</span><span class="col-opt">Location</span><span>Level</span>
-      <span class="col-opt">Relationship</span><span>Goal</span><span class="col-opt">Tags</span><span></span>
-    </div>
+    <div class="list-head" aria-hidden="true"></div>
     <div id="list" class="list"></div>
   </main>
 
@@ -51,6 +53,13 @@
       <div class="grid">
         <label>First name *<input name="firstName" required></label>
         <label>Last name<input name="lastName"></label>
+        <label class="prospect-only"><span>Where you met <small class="muted">— if you have</small></span>
+          <input name="metAt" placeholder="ANS career fair, LinkedIn, their talk…">
+        </label>
+        <label class="prospect-only"><span>Contact date <small class="muted">— if you met</small></span><input name="metDate" type="date"></label>
+        <label class="prospect-only full">Your primary goal with them (your ask)
+          <textarea name="ask" rows="2" placeholder="Learn how they got into detector R&D and whether their group takes summer interns"></textarea>
+        </label>
         <div class="full repeat-group">
           <div class="group-label">Work</div>
           <div id="jobs-rows" class="repeat"></div>
@@ -69,8 +78,8 @@
         <label>Nature of relationship
           <input name="relationship" list="relationship-options" placeholder="Pick or type">
         </label>
-        <label>Last touchpoint<input name="lastTouch" type="date"></label>
-        <label>Touchpoint frequency
+        <label class="net-only">Last touchpoint<input name="lastTouch" type="date"></label>
+        <label class="net-only">Touchpoint frequency
           <span class="inline">
             <select name="frequencyPreset">
               <option value="14">Every 2 weeks</option>
@@ -87,7 +96,7 @@
         <label>Email<input name="email" type="email"></label>
         <label>Phone<input name="phone" type="tel" autocomplete="off" placeholder="(865) 555-0123"></label>
         <label class="full">LinkedIn URL<input name="linkedin" type="url" placeholder="https://linkedin.com/in/…"></label>
-        <fieldset class="full">
+        <fieldset class="full net-only">
           <legend>Level of connection</legend>
           <div class="segmented" id="level-seg">
             <label><input type="radio" name="level" value="1"><span>1</span></label>
@@ -98,14 +107,14 @@
           </div>
           <small id="level-hint" class="muted"></small>
         </fieldset>
-        <fieldset class="full">
+        <fieldset class="full net-only">
           <legend>Goal</legend>
           <div class="segmented two">
             <label><input type="radio" name="mode" value="build" checked><span>Build</span></label>
             <label><input type="radio" name="mode" value="maintain"><span>Maintain</span></label>
           </div>
         </fieldset>
-        <label class="full">Interests / hobbies
+        <label class="full net-only">Interests / hobbies
           <input name="interests" placeholder="volleyball, AI policy, hiking, coffee">
         </label>
         <label class="full">Notes
@@ -121,6 +130,7 @@
       </section>
       <div class="dlg-actions">
         <button type="button" id="btn-delete" class="danger" hidden>Delete</button>
+        <button type="button" id="btn-promote" class="prospect-only" hidden title="Move them to your Network tab with a touchpoint schedule">Move to network →</button>
         <span class="spacer"></span>
         <button type="button" data-close>Cancel</button>
         <button type="submit" class="primary">Save</button>

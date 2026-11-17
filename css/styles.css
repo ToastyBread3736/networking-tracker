@@ -387,3 +387,32 @@ button, input:not([type="checkbox"]):not([type="radio"]), select { padding-top: 
 .row-x { position: absolute; right: 3px; bottom: 3px; width: 28px; height: calc(100% - 6px); max-height: 30px; padding: 0; display: grid; place-items: center; font-size: 13px; }
 .repeat-row:has(.row-x) input:last-of-type { padding-right: 32px; }
 .row-x:hover { color: var(--red); }
+
+/* ---------- Network / Potential tabs ---------- */
+.tabs { display: flex; gap: 4px; margin: 6px 0 10px; border-bottom: 1px solid var(--line); }
+.tabs .tab {
+  background: transparent; border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  padding: 8px 12px 9px; color: var(--muted); font-weight: 600; margin-bottom: -1px;
+}
+.tabs .tab:hover { background: transparent; color: var(--text); }
+.tabs .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab-count {
+  display: inline-block; min-width: 20px; margin-left: 6px; padding: 0 6px; border-radius: 9px;
+  background: var(--panel-2); border: 1px solid var(--line); font-size: 11px; line-height: 17px; color: var(--muted);
+}
+.tabs .tab.active .tab-count { color: var(--text); }
+
+/* Potential connections list: Met | Person | Where you met | Your ask | Tags | actions */
+.list-head.prospect, .row.prospect {
+  grid-template-columns: 92px minmax(170px, 2fr) minmax(110px, 1.2fr) minmax(140px, 2fr) minmax(100px, 1.3fr) 96px;
+}
+.row.prospect .ask { color: var(--text); font-size: 13px; }
+.due.met { color: var(--accent); border-color: rgb(124 156 255 / .35); background: rgb(124 156 255 / .08); font-weight: 500; }
+.due.notmet { color: var(--muted); border-color: var(--line); border-style: dashed; font-weight: 500; }
+@media (max-width: 960px) {
+  .list-head.prospect, .row.prospect { grid-template-columns: 86px minmax(140px, 1fr) minmax(100px, 1fr) 96px; }
+}
+@media (max-width: 560px) {
+  .list-head.prospect, .row.prospect { grid-template-columns: 80px 1fr 96px; }
+  .row.prospect .ask { display: none; }
+}

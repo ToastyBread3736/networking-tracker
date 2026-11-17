@@ -9,6 +9,7 @@ First decide what kind of relationship this is. Relationship comes before level.
 - FRIEND: the relationship is Friend, or a peer/classmate at level 4–5, or the notes show you hang out socially (party together, go out, room together, etc.). Treat them as a friend, not a networking contact.
 - PEER: a peer or classmate at level 1–3.
 - PROFESSIONAL: anyone senior or in a professional role (professional, mentor, recruiter, professor, manager, alumni you don't know socially).
+- POTENTIAL (level 0): the request says "Status: POTENTIAL CONNECTION". The user just met them once or hasn't met them at all (found on LinkedIn, a business card, a speaker). This comes before every other group. Ideas are about the first real contact and getting a reply: a personalized LinkedIn connection note, a short follow-up email or text referencing where you met (sent within a few days if you just met), a thoughtful comment on their post before reaching out, asking a mutual contact for an intro, or saying hello at an event they'll be at. Work toward the user's ASK, but the first message should be about them and make one small, specific request (a question, a 15-minute call), not the whole ask at once. If they haven't met, say how the user found them and why them specifically. If both are students, keep it casual, but it's still a first message to someone new.
 - BOTH STUDENTS: when the request says "BOTH STUDENTS: yes", the contact is a fellow student, so never treat them as PROFESSIONAL, even if they have a job or internship. Use FRIEND-style college ideas: hanging out, food runs, game nights, the gym, pickup sports, going to a game or show, studying together, or going to an org event or campus event together. Scale to the level: at level 1–2 keep it low-key and easy to say yes to (grab food after class or an org meeting, "want to study for this together?", "a few of us are going to…"); at level 3+ use the full FRIEND ideas. No corporate networking (formal coffee chats, informational interviews, referrals, introductions, sharing articles, LinkedIn anything) unless the user's goal or extra context asks for it.
 
 GOAL = BUILD (make the connection stronger)
@@ -49,6 +50,7 @@ Always:
 - Never invent specifics. If you don't know a detail (a place, a time), leave it out the way people do in real texts ("volleyball saturday?"). Use a [square-bracket placeholder] only when the message can't work without it, e.g. [article link].
 - Match the channel: email gets a subject line; LinkedIn messages and texts are shorter and have no subject.
 - To a FRIEND, write the way you'd text a friend: short, relaxed, lowercase is fine, no formal ask or sign-off.
+- For a POTENTIAL CONNECTION, it's a first message: one line on who the user is, how they know of them (where you met, or how they found them), one specific reason for reaching out, and one small, easy ask. No life story and no attachments. A LinkedIn connection note must be under 300 characters.
 - When it says BOTH STUDENTS, write like one student texting another: casual and short, like a FRIEND message (a little less familiar at level 1–2), never like a networking email.
 - MY RESUME, when given: mention at most one experience from it, in a few words, and only when it connects directly to this contact's work, the goal, or the chosen idea (e.g. emailing a nuclear engineering professor about detection research → one short clause about the user's own detector work). If nothing connects, leave the resume out entirely. Never list credentials, copy resume lines, or make the message about the user; it's a message, not a cover letter. Never use it with FRIENDS.`;
 
@@ -104,12 +106,16 @@ Always:
         ? `- Student organizations: ${p.orgs.map(o => (o.role ? `${o.role} of ${o.name}` : `member of ${o.name}`)).join('; ')}`
         : null,
       p.location ? `- Location: ${p.location}` : null,
+      p.prospect ? `- Status: POTENTIAL CONNECTION (level 0, not in the user's network yet)` : null,
+      p.metAt ? `- Where the user met them: ${p.metAt}` : null,
+      p.prospect ? `- Contact date: ${p.metDate || (p.metAt ? "not recorded" : "they haven't met yet")}` : null,
+      p.ask ? `- The user's ask (primary goal with this person): ${p.ask}` : null,
       p.relationship ? `- Relationship to user: ${p.relationship}` : null,
-      `- Level of connection: ${p.level}/5 (${S.LEVELS[p.level]})`,
+      p.prospect ? null : `- Level of connection: ${p.level}/5 (${S.LEVELS[p.level]})`,
       p.tags.length ? `- Tags: ${p.tags.join(', ')}` : null,
       p.interests ? `- Interests: ${p.interests}` : null,
       p.notes ? `- Notes: ${p.notes}` : null,
-      `- Last touchpoint: ${S.sinceLabel(p)}${p.lastTouch ? ` (${p.lastTouch})` : ''}; desired every ${p.frequencyDays} days`,
+      p.prospect ? null : `- Last touchpoint: ${S.sinceLabel(p)}${p.lastTouch ? ` (${p.lastTouch})` : ''}; desired every ${p.frequencyDays} days`,
       p.history.length
         ? `- Past touchpoints (oldest first), with what the user learned:\n${p.history.slice(-10).map(h =>
             `    ${h.date}: ${h.type}${h.note ? `\n      Notes: ${h.note.replace(/\s*\n\s*/g, ' ')}` : ''}`).join('\n')}`
@@ -274,7 +280,8 @@ Judge only from the profile. Never invent facts about a contact. If a profile is
       p.student ? `student${S.studyLabel(p, ', ') ? `: ${[p.major, p.university].filter(Boolean).join(' at ')}` : ''}` : null,
       S.studentOrgs(p).length ? `orgs: ${p.orgs.map(o => (o.role ? `${o.role} of ${o.name}` : o.name)).join('; ')}` : null,
       p.relationship ? `relationship: ${p.relationship}` : null,
-      `level: ${p.level}/5`,
+      p.prospect ? `potential connection (not met or just met)${p.metAt ? `, met at ${p.metAt}` : ''}` : `level: ${p.level}/5`,
+      p.ask ? `user's ask: ${clip(p.ask, 200)}` : null,
       p.location ? `location: ${p.location}` : null,
       p.tags.length ? `tags: ${p.tags.join(', ')}` : null,
       p.interests ? `interests: ${clip(p.interests, 200)}` : null,
