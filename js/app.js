@@ -1023,6 +1023,123 @@
   }
   themedSelect(fp.frequencyPreset);
 
+  // ---------- themed calendar for date fields ----------
+  // The real <input type="date"> stays (typing a date still works, and it's what gets saved); this popup only fills
+  // it in. Dates stay "YYYY-MM-DD" strings and all math uses local year/month/day. Never `new Date("YYYY-MM-DD")`,
+  // which is UTC and would shift dates a day early in US time zones. Day steps use the Date constructor, not
+  // milliseconds, so daylight-saving changes can't skip or repeat a day.
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoOf = (y, m, d) => { const dt = new Date(y, m, d); return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`; };
+  const partsOf = iso => { const [y, m, d] = iso.split('-').map(Number); return { y, m: m - 1, d }; };
+  const validISO = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+
+  function themedDate(input) {
+    const wrap = h('span', { class: 'combo date-wrap' });
+    input.replaceWith(wrap);
+    const toggle = h('button', { type: 'button', class: 'date-toggle', 'aria-label': 'Open calendar', 'aria-haspopup': 'dialog', 'aria-expanded': 'false' });
+    wrap.append(input, toggle);
+    const cal = h('div', { class: 'cal', role: 'dialog', 'aria-label': 'Choose a date', hidden: true });
+    cal.addEventListener('mousedown', e => e.preventDefault()); // keep focus on the toggle so blur means "clicked away"
+    let view = { y: 0, m: 0 }, cursor = '';
+
+    const inRange = iso => (!validISO(input.min) || iso >= input.min) && (!validISO(input.max) || iso <= input.max);
+
+    function choose(iso) {
+      if (iso && !inRange(iso)) return;
+      input.value = iso;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      close();
+      toggle.focus();
+    }
+
+    function draw() {
+      const today = S.todayISO();
+      const first = new Date(view.y, view.m, 1).getDay(); // weekday of the 1st, 0 = Sunday
+      const cells = [];
+      for (let i = 0; i < 42; i++) {
+        const iso = isoOf(view.y, view.m, 1 - first + i);
+        const p = partsOf(iso);
+        const cls = ['day', p.m !== view.m ? 'out' : '', iso === today ? 'today' : '', iso === input.value ? 'sel' : '', iso === cursor ? 'cursor' : '']
+          .filter(Boolean).join(' ');
+        const ok = inRange(iso);
+        cells.push(h('button', { type: 'button', tabindex: '-1', class: cls, disabled: !ok, 'aria-label': iso, onclick: () => choose(iso) }, p.d));
+      }
+      const todayOk = inRange(today);
+      cal.replaceChildren(
+        h('div', { class: 'cal-head' },
+          h('button', { type: 'button', tabindex: '-1', class: 'cal-nav', 'aria-label': 'Previous month', onclick: () => shiftMonth(-1) }, '‹'),
+          h('span', { class: 'cal-title' }, `${MONTHS[view.m]} ${view.y}`),
+          h('button', { type: 'button', tabindex: '-1', class: 'cal-nav', 'aria-label': 'Next month', onclick: () => shiftMonth(1) }, '›')),
+        h('div', { class: 'cal-grid' },
+          ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => h('span', { class: 'dow' }, d)),
+          cells),
+        h('div', { class: 'cal-foot' },
+          input.required ? h('span') : h('button', { type: 'button', tabindex: '-1', class: 'ghost', onclick: () => choose('') }, 'Clear'),
+          h('button', { type: 'button', tabindex: '-1', class: 'ghost', disabled: !todayOk, onclick: () => choose(today) }, 'Today')));
+    }
+
+    function shiftMonth(n) {
+      const dt = new Date(view.y, view.m + n, 1);
+      view = { y: dt.getFullYear(), m: dt.getMonth() };
+      // keep the keyboard cursor in the shown month, on the same day number where possible
+      const c = partsOf(cursor);
+      const last = new Date(view.y, view.m + 1, 0).getDate();
+      cursor = isoOf(view.y, view.m, Math.min(c.d, last));
+      draw();
+    }
+
+    function moveCursor(days) {
+      const c = partsOf(cursor);
+      cursor = isoOf(c.y, c.m, c.d + days);
+      const p = partsOf(cursor);
+      view = { y: p.y, m: p.m };
+      draw();
+    }
+
+    function place() {
+      const r = input.getBoundingClientRect();
+      const w = cal.offsetWidth;
+      cal.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px'; // keep it on screen
+      const below = window.innerHeight - r.bottom - 8;
+      if (below < cal.offsetHeight && r.top > below) { cal.style.top = ''; cal.style.bottom = (window.innerHeight - r.top + 4) + 'px'; }
+      else { cal.style.bottom = ''; cal.style.top = (r.bottom + 4) + 'px'; }
+    }
+
+    function open() {
+      if (!cal.isConnected) (input.closest('dialog') || document.body).append(cal);
+      cursor = validISO(input.value) ? input.value : (inRange(S.todayISO()) ? S.todayISO() : (input.max || input.min || S.todayISO()));
+      const p = partsOf(cursor);
+      view = { y: p.y, m: p.m };
+      draw();
+      cal.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+      place();
+    }
+    function close() { cal.hidden = true; toggle.setAttribute('aria-expanded', 'false'); }
+
+    toggle.addEventListener('mousedown', e => { e.preventDefault(); toggle.focus(); cal.hidden ? open() : close(); });
+    toggle.addEventListener('click', e => { if (e.detail === 0 && cal.hidden) open(); }); // Enter/Space on the toggle
+    toggle.addEventListener('blur', close);
+    toggle.addEventListener('keydown', e => {
+      if (cal.hidden) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); open(); }
+        return;
+      }
+      const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+      if (step) { e.preventDefault(); moveCursor(step); }
+      else if (e.key === 'PageUp' || e.key === 'PageDown') { e.preventDefault(); shiftMonth(e.key === 'PageUp' ? -1 : 1); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(cursor); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    // Alt+↓ in the field itself opens the calendar too (the browser's own picker is hidden).
+    input.addEventListener('keydown', e => { if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); toggle.focus(); open(); } });
+    document.addEventListener('scroll', e => { if (!cal.hidden && !cal.contains(e.target)) close(); }, true);
+    window.addEventListener('resize', close);
+  }
+  document.querySelectorAll('input[type="date"]').forEach(themedDate);
+
   // Re-render at midnight-ish so "due" labels stay current if the tab stays open.
   setInterval(render, 60 * 60 * 1000);
 

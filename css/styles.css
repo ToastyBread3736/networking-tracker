@@ -328,3 +328,44 @@ dialog::-webkit-scrollbar-track { margin-block: 12px; }
 .select-btn:hover {
   background: var(--panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23e6edf3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;
 }
+
+/* ---------- themed calendar ---------- */
+/* Hide the browser's own picker icon; our toggle opens the themed calendar instead. */
+input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+input[type="date"]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+input[type="date"]::-webkit-datetime-edit-month-field:focus,
+input[type="date"]::-webkit-datetime-edit-day-field:focus,
+input[type="date"]::-webkit-datetime-edit-year-field:focus { background: rgb(124 156 255 / .3); color: var(--text); border-radius: 3px; }
+.date-toggle {
+  position: absolute; top: 1px; right: 1px; bottom: 1px; width: 32px; padding: 0;
+  border: 0; border-radius: 0 5px 5px 0; transition: background-color .12s;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%238b96a5' stroke-width='1.4'%3E%3Crect x='1.5' y='2.5' width='11' height='10' rx='2'/%3E%3Cpath d='M1.5 5.5h11M4.5 1v3M9.5 1v3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+}
+.date-toggle:hover, .date-toggle[aria-expanded="true"] {
+  background: #232a35 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='%23e6edf3' stroke-width='1.4'%3E%3Crect x='1.5' y='2.5' width='11' height='10' rx='2'/%3E%3Cpath d='M1.5 5.5h11M4.5 1v3M9.5 1v3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+}
+.date-wrap input { padding-right: 36px; }
+
+.cal {
+  position: fixed; z-index: 50; width: 260px; padding: 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .45); color: var(--text); font-size: 13px;
+}
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cal-title { font-weight: 600; }
+.cal-nav { padding: 2px 9px; font-size: 16px; line-height: 1.2; background: transparent; border-color: transparent; color: var(--muted); }
+.cal-nav:hover { background: #263043; border-color: transparent; color: var(--text); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal .dow { text-align: center; font-size: 11px; color: var(--muted); padding: 4px 0; }
+.cal .day {
+  padding: 0; height: 30px; border: 1px solid transparent; border-radius: 6px;
+  background: transparent; color: var(--text); font-size: 13px; text-align: center;
+}
+.cal .day:hover:not(:disabled) { background: #263043; border-color: transparent; }
+.cal .day.out { color: #5d6776; }
+.cal .day.today { border-color: var(--accent); }
+.cal .day.cursor { background: #263043; }
+.cal .day.sel, .cal .day.sel:hover { background: var(--accent); color: var(--accent-ink); font-weight: 600; border-color: var(--accent); }
+.cal .day:disabled { opacity: .3; cursor: default; }
+.cal-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.cal-foot .ghost { color: var(--accent); }
