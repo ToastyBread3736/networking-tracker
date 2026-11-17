@@ -289,3 +289,20 @@ select option { background: var(--panel-2); color: var(--text); }
 .combo-menu li.current { font-weight: 600; }
 .combo-menu li.current::after { content: " ✓"; color: var(--accent); }
 .combo-menu li:hover, .combo-menu li.active { background: #263043; color: var(--text); }
+
+/* ---------- scrollbars ----------
+   Thin rounded thumb on a transparent track, with no arrow buttons. Scrolling boxes with rounded corners
+   inset the track by their corner radius so the thumb stops before the curve instead of running past it. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: #323b48; border-radius: 10px;
+  border: 2px solid transparent; background-clip: padding-box; /* leaves a gap from the box edge */
+}
+::-webkit-scrollbar-thumb:hover { background-color: #45505f; }
+dialog::-webkit-scrollbar-track { margin-block: 12px; }
+.combo-menu::-webkit-scrollbar-track, textarea::-webkit-scrollbar-track, select::-webkit-scrollbar-track { margin-block: 6px; }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: #323b48 transparent; }
+}
