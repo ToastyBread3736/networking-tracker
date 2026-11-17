@@ -7,6 +7,7 @@
 
   const DEFAULT_SETTINGS = {
     name: '', location: '', role: '', interests: '', goal: '', bio: '',
+    student: false, university: '', major: '', orgs: [], // same student fields as a contact
     exFriendly: '', exProfessional: '', exCasual: '', // default writing examples per tone
     resume: '', // plain text, extracted from an uploaded PDF/TXT or pasted
     apiKey: '', model: 'claude-opus-5-5',
@@ -94,11 +95,18 @@
           .sort((a, b) => a.date.localeCompare(b.date))
           .slice(-50)
       : [];
+    const university = str(raw.university, 150);
+    const major = str(raw.major, 150);
+    // Older data has no `student` flag: treat anyone with student orgs as a student.
+    const student = typeof raw.student === 'boolean' ? raw.student : !!(orgs.length || university || major);
     return {
       id: str(raw.id, 100) || uid(),
       firstName,
       lastName: str(raw.lastName, 100),
       jobs,
+      student,
+      university,
+      major,
       orgs,
       location: str(raw.location, 150),
       email: str(raw.email, 200),
@@ -173,10 +181,13 @@
 
   const jobLabel = (j, sep = ' at ') => [j.title, j.company].filter(Boolean).join(sep);
   const orgLabel = o => (o.role ? `${o.role}, ${o.name}` : `Member, ${o.name}`);
+  // "Nuclear Engineering · UT Knoxville"; the student fields only count when the Student box is checked.
+  const studyLabel = (p, sep = ' · ') => (p.student ? [p.major, p.university].filter(Boolean).join(sep) : '');
+  const studentOrgs = p => (p.student ? p.orgs : []);
 
   window.NT = window.NT || {};
   NT.store = {
-    LEVELS, uid, jobLabel, orgLabel, todayISO, dueInfo, sinceLabel, normalize,
+    LEVELS, uid, jobLabel, orgLabel, studyLabel, studentOrgs, todayISO, dueInfo, sinceLabel, normalize,
     loadPeople, savePeople, getSettings, saveSettings, exportJSON, parseImport,
     loadGoalRank, saveGoalRank, hash,
   };

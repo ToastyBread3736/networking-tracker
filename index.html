@@ -55,9 +55,14 @@
           <div class="group-label">Work <small class="muted">— another row appears when you fill one in</small></div>
           <div id="jobs-rows" class="repeat"></div>
         </div>
-        <div class="full repeat-group">
-          <div class="group-label">Student organizations <small class="muted">— leave position blank if they're a member</small></div>
-          <div id="orgs-rows" class="repeat"></div>
+        <label class="check full"><input type="checkbox" name="student"> Student</label>
+        <div id="student-fields" class="full grid student-box" hidden>
+          <label>University<input name="university" placeholder="University of Tennessee, Knoxville"></label>
+          <label>Major<input name="major" placeholder="Nuclear Engineering"></label>
+          <div class="full repeat-group">
+            <div class="group-label">Student organizations <small class="muted">— leave position blank if they're a member</small></div>
+            <div id="orgs-rows" class="repeat"></div>
+          </div>
         </div>
         <label>Location<input name="location" placeholder="Knoxville, TN"></label>
         <label>Tags<input name="tags" placeholder="product, alumni, volleyball"></label>
@@ -261,6 +266,15 @@
         <label>Your name<input name="name"></label>
         <label>Your location<input name="location" placeholder="Knoxville, TN"></label>
         <label class="full">Role / school<input name="role" placeholder="CS student at UT Knoxville"></label>
+        <label class="check full"><input type="checkbox" name="student"> I'm a student</label>
+        <div id="my-student-fields" class="full grid student-box" hidden>
+          <label>University<input name="university" placeholder="University of Tennessee, Knoxville"></label>
+          <label>Major<input name="major" placeholder="Nuclear Engineering"></label>
+          <div class="full repeat-group">
+            <div class="group-label">Your student organizations <small class="muted">— leave position blank if you're a member</small></div>
+            <div id="my-orgs-rows" class="repeat"></div>
+          </div>
+        </div>
         <label class="full">Your interests<input name="interests" placeholder="volleyball, ML, startups"></label>
         <label class="full"><span>Current goal <small class="muted">— used by "Sort: Goal relevance"</small></span>
           <input name="goal" maxlength="200" placeholder="Summer 2027 internship in nuclear detection">

@@ -9,6 +9,7 @@ First decide what kind of relationship this is. Relationship comes before level.
 - FRIEND: the relationship is Friend, or a peer/classmate at level 4–5, or the notes show you hang out socially (party together, go out, room together, etc.). Treat them as a friend, not a networking contact.
 - PEER: a peer or classmate at level 1–3.
 - PROFESSIONAL: anyone senior or in a professional role (professional, mentor, recruiter, professor, manager, alumni you don't know socially).
+- BOTH STUDENTS: when the request says "BOTH STUDENTS: yes", the contact is a fellow student, so never treat them as PROFESSIONAL, even if they have a job or internship. Use FRIEND-style college ideas: hanging out, food runs, game nights, the gym, pickup sports, going to a game or show, studying together, or going to an org event or campus event together. Scale to the level: at level 1–2 keep it low-key and easy to say yes to (grab food after class or an org meeting, "want to study for this together?", "a few of us are going to…"); at level 3+ use the full FRIEND ideas. No corporate networking (formal coffee chats, informational interviews, referrals, introductions, sharing articles, LinkedIn anything) unless the user's goal or extra context asks for it.
 
 GOAL = BUILD (make the connection stronger)
 - FRIEND: ideas should be what college students actually do together for fun. Examples: going out or to a party, hosting people over, a game night, a tailgate or watching a game, a concert or show, a road trip or day trip, a late-night food run, the gym, pickup sports or intramurals, or a spontaneous "you free tonight?" plan. Lean into whatever the notes and interests say you already do together. Do NOT suggest networking-style ideas for friends: co-hosting events, collaborating on projects, introductions, referrals, sharing articles, or LinkedIn anything. The only exception is when the extra context asks for it. Congratulations on big news is fine, but as a text or in person (or "let's celebrate"), not a LinkedIn comment.
@@ -26,6 +27,7 @@ Always:
 - Notes and interests are the strongest signal about the person. If the notes say how you spend time together, most ideas should build on that.
 - Touchpoint notes are things the user learned firsthand. Use them. Follow up on what was discussed (an interview they mentioned, a trip, a project), and turn personal details into thoughtful gestures (e.g. "loves getting donuts on Sundays" → bring a box of donuts to the next coffee chat). Don't repeat the same kind of touchpoint they just had unless it's a regular thing you do together.
 - For PEER and PROFESSIONAL contacts, student organizations and leadership roles make good openings: their org's events, asking how their role is going, working together across orgs, or (for officers) offering to help or speak. For FRIENDS, an org event is only something to go to together for fun.
+- Shared ground counts: if the user and the contact go to the same university, study the same or a related major, or are in the same student organization, use that (a class or professor in common, an org event, "fellow ANS member"). Never claim a connection the profiles don't show.
 - Some people have more than one job (e.g. a professor who also runs a business). Choose the role that fits the idea best.
 - Base ideas on the profile: jobs, organizations, location, relationship, level, interests, notes, and past touchpoints. Don't suggest something they've already done recently.
 - Suggest in-person ideas only if you and the contact are in the same area (or the extra context says you'll be there). Otherwise suggest virtual ones.
@@ -47,19 +49,37 @@ Always:
 - Never invent specifics. If you don't know a detail (a place, a time), leave it out the way people do in real texts ("volleyball saturday?"). Use a [square-bracket placeholder] only when the message can't work without it, e.g. [article link].
 - Match the channel: email gets a subject line; LinkedIn messages and texts are shorter and have no subject.
 - To a FRIEND, write the way you'd text a friend: short, relaxed, lowercase is fine, no formal ask or sign-off.
+- When it says BOTH STUDENTS, write like one student texting another: casual and short, like a FRIEND message (a little less familiar at level 1–2), never like a networking email.
 - MY RESUME, when given: mention at most one experience from it, in a few words, and only when it connects directly to this contact's work, the goal, or the chosen idea (e.g. emailing a nuclear engineering professor about detection research → one short clause about the user's own detector work). If nothing connects, leave the resume out entirely. Never list credentials, copy resume lines, or make the message about the user; it's a message, not a cover letter. Never use it with FRIENDS.`;
 
   // Friends get texts and hangouts, so the resume would only cost tokens there. Same test as the casual tone default.
-  function isFriend(p) {
+  // Both the user (Settings) and the contact have "Student" checked: ideas and drafts go college-style.
+  const bothStudents = (p, me) => !!(p.student && me && me.student);
+
+  function isFriend(p, me) {
     const rel = (p.relationship || '').toLowerCase();
-    return /friend/.test(rel) || (/peer|classmate/.test(rel) && p.level >= 4);
+    return /friend/.test(rel) || (/peer|classmate/.test(rel) && p.level >= 4) || bothStudents(p, me);
   }
   const MAX_RESUME_CHARS = 6000; // roughly 1,500 tokens
 
   function resumeBlock(p, me) {
     const text = (me.resume || '').trim();
-    if (!text || isFriend(p)) return null;
+    if (!text || isFriend(p, me)) return null; // friends and fellow students get college ideas, not resume mentions
     return `\nMY RESUME (the user's background; use only what connects to this contact or goal)\n<resume>\n${text.slice(0, MAX_RESUME_CHARS)}\n</resume>`;
+  }
+
+  // The user's own student details (Settings), only while "I'm a student" is checked. Imported settings may be
+  // malformed, so orgs are checked here.
+  function myStudentLines(me, prefix = '- ') {
+    if (!me.student) return [];
+    const study = [me.major, me.university].filter(s => typeof s === 'string' && s.trim()).join(' at ');
+    const orgs = (Array.isArray(me.orgs) ? me.orgs : [])
+      .filter(o => o && typeof o.name === 'string' && o.name.trim())
+      .map(o => (o.role ? `${o.role} of ${o.name}` : `member of ${o.name}`));
+    return [
+      `${prefix}Student${study ? `: ${study}` : ''}`,
+      orgs.length ? `${prefix}Student organizations: ${orgs.join('; ')}` : null,
+    ].filter(Boolean);
   }
 
   function personContext(p, me, mode, focus, { resume = true } = {}) {
@@ -69,7 +89,8 @@ Always:
       `CONTACT`,
       `- Name: ${name}`,
       p.jobs.length ? `- Work: ${p.jobs.map(j => S.jobLabel(j)).join('; ')}` : null,
-      p.orgs.length
+      p.student ? `- Student${S.studyLabel(p, ', ') ? `: ${[p.major, p.university].filter(Boolean).join(' at ')}` : ''}` : null,
+      S.studentOrgs(p).length
         ? `- Student organizations: ${p.orgs.map(o => (o.role ? `${o.role} of ${o.name}` : `member of ${o.name}`)).join('; ')}`
         : null,
       p.location ? `- Location: ${p.location}` : null,
@@ -87,12 +108,14 @@ Always:
       `USER (me)`,
       me.name ? `- Name: ${me.name}` : null,
       me.role ? `- Role: ${me.role}` : null,
+      ...myStudentLines(me),
       me.location ? `- Location: ${me.location}` : null,
       me.interests ? `- Interests: ${me.interests}` : null,
       me.goal ? `- Current goal: ${me.goal}` : null,
       me.bio ? `- Goals / context: ${me.bio}` : null,
       resume ? resumeBlock(p, me) : null,
       ``,
+      bothStudents(p, me) ? `BOTH STUDENTS: yes (the user and this contact are both students; use college ideas, not corporate ones)` : null,
       `GOAL: ${mode === 'build' ? 'BUILD this connection' : 'MAINTAIN this connection'}`,
       `Today: ${S.todayISO()}`,
       focus ? `Extra context from the user: ${focus}` : null,
@@ -238,7 +261,8 @@ Judge only from the profile. Never invent facts about a contact. If a profile is
     const notes = p.history.slice(-3).filter(h => h.note).map(h => `${h.type}: ${clip(h.note.replace(/\s+/g, ' '), 150)}`);
     return [
       p.jobs.length ? `work: ${p.jobs.map(j => S.jobLabel(j)).join('; ')}` : null,
-      p.orgs.length ? `orgs: ${p.orgs.map(o => (o.role ? `${o.role} of ${o.name}` : o.name)).join('; ')}` : null,
+      p.student ? `student${S.studyLabel(p, ', ') ? `: ${[p.major, p.university].filter(Boolean).join(' at ')}` : ''}` : null,
+      S.studentOrgs(p).length ? `orgs: ${p.orgs.map(o => (o.role ? `${o.role} of ${o.name}` : o.name)).join('; ')}` : null,
       p.relationship ? `relationship: ${p.relationship}` : null,
       `level: ${p.level}/5`,
       p.location ? `location: ${p.location}` : null,
@@ -256,6 +280,7 @@ Judge only from the profile. Never invent facts about a contact. If a profile is
   function goalRankRequest(items, me) {
     const user = [
       me.role ? `Role: ${me.role}` : null,
+      ...myStudentLines(me, ''),
       me.location ? `Location: ${me.location}` : null,
       me.interests ? `Interests: ${me.interests}` : null,
       me.goal && me.bio ? `Other context: ${clip(me.bio, 400)}` : null,

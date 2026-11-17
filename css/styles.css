@@ -374,3 +374,6 @@ input[type="date"]::-webkit-datetime-edit-year-field:focus { background: rgb(124
 /* Optical centering: the system font leaves more room above its letters than below, so with equal padding
    the text sat ~1px low. Half a pixel moves from top to bottom; total height is unchanged. */
 button, input:not([type="checkbox"]):not([type="radio"]), select { padding-top: 6.5px; padding-bottom: 7.5px; }
+
+/* student details: shown only when "Student" is checked */
+.student-box { padding: 12px; margin-top: -4px; border: 1px solid var(--line); border-radius: var(--radius); background: rgb(255 255 255 / .015); }

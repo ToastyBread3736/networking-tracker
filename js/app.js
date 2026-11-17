@@ -57,7 +57,7 @@
   function matches(p, q) {
     if (!q) return true;
     if (q.startsWith('#')) return p.tags.some(t => t.startsWith(q.slice(1)));
-    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...p.orgs.flatMap(o => [o.name, o.role]), p.location, p.relationship, p.interests, p.notes, p.email, p.phone, ...p.tags, ...p.history.flatMap(x => [x.type, x.note])]
+    const hay = [fullName(p), ...p.jobs.flatMap(j => [j.title, j.company]), ...S.studentOrgs(p).flatMap(o => [o.name, o.role]), S.studyLabel(p, ' '), p.student ? 'student' : '', p.location, p.relationship, p.interests, p.notes, p.email, p.phone, ...p.tags, ...p.history.flatMap(x => [x.type, x.note])]
       .join(' ').toLowerCase();
     return q.split(/\s+/).every(w => hay.includes(w));
   }
@@ -80,12 +80,14 @@
 
   // First job (or first org if no job), with "+N" when there are more roles.
   function subtitle(p) {
-    const first = p.jobs[0] ? S.jobLabel(p.jobs[0], ' · ') : p.orgs[0] ? S.orgLabel(p.orgs[0]) : '';
-    const more = p.jobs.length + p.orgs.length - 1;
+    const orgs = S.studentOrgs(p), study = S.studyLabel(p);
+    const first = p.jobs[0] ? S.jobLabel(p.jobs[0], ' · ') : study || (orgs[0] ? S.orgLabel(orgs[0]) : '');
+    const more = p.jobs.length + orgs.length + (study ? 1 : 0) - 1;
     return first ? (more > 0 ? `${first}  +${more}` : first) : '—';
   }
   function allRoles(p) {
-    return [...p.jobs.map(j => S.jobLabel(j)), ...p.orgs.map(S.orgLabel)].join('\n');
+    const study = S.studyLabel(p, ', ');
+    return [...p.jobs.map(j => S.jobLabel(j)), study ? `Student: ${study}` : '', ...S.studentOrgs(p).map(S.orgLabel)].filter(Boolean).join('\n');
   }
 
   // In the goal sort, a score badge sits next to the name and the reason replaces the job line (roles stay in its tooltip).
@@ -347,6 +349,7 @@
   const REPEAT = {
     jobs: { box: '#jobs-rows', max: 3, fields: [['title', 'Job title', 'Professor of CS'], ['company', 'Company / org', 'UT Knoxville']] },
     orgs: { box: '#orgs-rows', max: 3, fields: [['name', 'Organization', 'ACM'], ['role', 'Leadership position', 'President (blank = member)']] },
+    myOrgs: { box: '#my-orgs-rows', max: 3, fields: [['name', 'Organization', 'ACM'], ['role', 'Leadership position', 'President (blank = member)']] },
   };
 
   function repeatRow(cfg, val = {}) {
@@ -392,6 +395,10 @@
     }
     fillRepeat(REPEAT.jobs, v.jobs);
     fillRepeat(REPEAT.orgs, v.orgs);
+    fp.elements.university.value = v.university || '';
+    fp.elements.major.value = v.major || '';
+    fp.elements.student.checked = !!v.student;
+    updateStudentFields();
     fp.tags.value = (v.tags || []).join(', ');
     fp.querySelector(`input[name=level][value="${v.level}"]`).checked = true;
     fp.querySelector(`input[name=mode][value="${v.mode}"]`).checked = true;
@@ -406,7 +413,12 @@
     fp.firstName.focus();
   }
 
+  // University, major and student orgs only show for students. Unchecking hides them without erasing them,
+  // so checking it again brings them back; while unchecked they aren't shown in the list or sent to the AI.
+  function updateStudentFields() { $('#student-fields').hidden = !fp.elements.student.checked; }
+
   fp.addEventListener('change', e => {
+    if (e.target.name === 'student') updateStudentFields();
     if (e.target.name === 'level') updateLevelHint();
     if (e.target.name === 'frequencyPreset') updateFreqCustom();
   });
@@ -418,6 +430,7 @@
     raw.frequencyDays = raw.frequencyPreset === 'custom' ? raw.frequencyCustom : raw.frequencyPreset;
     raw.jobs = readRepeat(REPEAT.jobs);
     raw.orgs = readRepeat(REPEAT.orgs);
+    raw.student = fp.elements.student.checked;
     const existing = editingId ? byId(editingId) : null;
     if (existing) {
       raw.id = existing.id; raw.createdAt = existing.createdAt; raw.history = existing.history;
@@ -491,6 +504,7 @@
   function defaultTone(p) {
     const rel = (p.relationship || '').toLowerCase();
     if (/friend/.test(rel) || (/peer|classmate/.test(rel) && p.level >= 4)) return 'casual';
+    if (p.student && S.getSettings().student) return 'casual'; // both students
     if (/professional|senior|mentor|manager|recruiter|professor|dr\b/.test(rel)) return 'professional';
     return 'friendly';
   }
@@ -703,9 +717,12 @@
   const fs = $('#form-settings');
   $('#btn-settings').addEventListener('click', () => {
     const s = S.getSettings();
-    for (const k of ['name', 'location', 'role', 'interests', 'goal', 'bio', 'resume', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
+    for (const k of ['name', 'location', 'role', 'interests', 'goal', 'bio', 'university', 'major', 'resume', 'exFriendly', 'exProfessional', 'exCasual', 'apiKey', 'model']) {
       fs.elements[k].value = s[k] || '';
     }
+    fs.elements.student.checked = !!s.student;
+    fillRepeat(REPEAT.myOrgs, Array.isArray(s.orgs) ? s.orgs : []);
+    updateMyStudentFields();
     updateResumeStatus();
     dlgSettings.showModal();
   });
@@ -778,10 +795,16 @@
       updateResumeStatus(`Couldn't read that file: ${err.message || err}`);
     }
   });
+  function updateMyStudentFields() { $('#my-student-fields').hidden = !fs.elements.student.checked; }
+  fs.elements.student.addEventListener('change', updateMyStudentFields);
+
   fs.addEventListener('submit', e => {
     e.preventDefault();
     const raw = Object.fromEntries(new FormData(fs).entries());
     for (const k in raw) raw[k] = raw[k].trim();
+    // Like a contact's: kept when unchecked (so re-checking restores them) but only used while checked.
+    raw.student = fs.elements.student.checked;
+    raw.orgs = readRepeat(REPEAT.myOrgs).filter(o => o.name).slice(0, 3);
     S.saveSettings(raw);
     if (dlgIdeas.open) updateExamplesSource();
     dlgSettings.close();
