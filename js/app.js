@@ -648,7 +648,7 @@
   $('#btn-promote').addEventListener('click', enterPromote);
 
   // ---------- fill a profile from a LinkedIn PDF ----------
-  // On LinkedIn: open their profile → More → Save to PDF. The PDF is read here in the browser (pdf.js, same
+  // On LinkedIn: open their profile → ⋯ (three dots) → Save to PDF. The PDF is read here in the browser (pdf.js, same
   // loader as the resume upload) and parsed by js/linkedin.js; nothing is sent anywhere. A preview lets you pick
   // what to fill into the open form, and nothing is saved until the form's own Save.
   const dlgLi = $('#dlg-li');
@@ -680,7 +680,7 @@
     btn.textContent = 'Reading PDF…';
     try {
       const data = NT.linkedin.parse(await pdfLayout(file));
-      if (!data) throw new Error("That doesn't look like a LinkedIn profile PDF. On their profile, use More → Save to PDF.");
+      if (!data) throw new Error("That doesn't look like a LinkedIn profile PDF. On their LinkedIn profile, click the ⋯ (three dots) button, then Save to PDF.");
       liData = data;
       openLiPreview(data);
     } catch (err) {
