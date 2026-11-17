@@ -647,6 +647,171 @@
   // From the potential connection's edit form: keeps any edits typed so far.
   $('#btn-promote').addEventListener('click', enterPromote);
 
+  // ---------- fill a profile from a LinkedIn PDF ----------
+  // On LinkedIn: open their profile → More → Save to PDF. The PDF is read here in the browser (pdf.js, same
+  // loader as the resume upload) and parsed by js/linkedin.js; nothing is sent anywhere. A preview lets you pick
+  // what to fill into the open form, and nothing is saved until the form's own Save.
+  const dlgLi = $('#dlg-li');
+  const fli = $('#form-li');
+  let liData = null;
+
+  async function pdfLayout(file) {
+    const pdfjs = await loadPdfJs();
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const pages = [];
+    for (let i = 1; i <= Math.min(doc.numPages, 10); i++) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      pages.push({
+        width: page.getViewport({ scale: 1 }).width,
+        items: tc.items.map(it => ({ x: it.transform[4], y: it.transform[5], size: it.height, str: it.str })),
+      });
+    }
+    return pages;
+  }
+
+  $('#btn-li-pdf').addEventListener('click', () => $('#li-file').click());
+  $('#li-file').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const btn = $('#btn-li-pdf');
+    btn.disabled = true;
+    btn.textContent = 'Reading PDF…';
+    try {
+      const data = NT.linkedin.parse(await pdfLayout(file));
+      if (!data) throw new Error("That doesn't look like a LinkedIn profile PDF. On their profile, use More → Save to PDF.");
+      liData = data;
+      openLiPreview(data);
+    } catch (err) {
+      toast(err.message || String(err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Fill from LinkedIn PDF';
+    }
+  });
+
+  const MON = { january: 'Jan', february: 'Feb', march: 'Mar', april: 'Apr', may: 'May', june: 'Jun', july: 'Jul', august: 'Aug', september: 'Sep', october: 'Oct', november: 'Nov', december: 'Dec' };
+  const shortMonth = s => (s || '').replace(/\b([A-Za-z]+)\b/, w => MON[w.toLowerCase()] || w);
+  const span = (a, b) => [shortMonth(a), shortMonth(b)].filter(Boolean).join(' – ');
+
+  function liNotes(d) {
+    const pastEdu = d.education.filter(x => !x.current)
+      .map(x => `${[x.degree, x.field].filter(Boolean).join(', ')}${x.degree || x.field ? ' — ' : ''}${x.school}${x.end ? ` (${x.end.replace(/^\D+/, '')})` : ''}`);
+    const earlier = d.experience.filter(x => !x.current).slice(0, 4).map(x => `${x.title} at ${x.company} (${span(x.start, x.end)})`);
+    return [
+      `From LinkedIn (${S.todayISO()}):`,
+      d.headline ? `Headline: ${d.headline}` : null,
+      d.skills.length ? `Top skills: ${d.skills.join(', ')}` : null,
+      d.summary ? `About: ${d.summary.length > 500 ? d.summary.slice(0, 500) + '…' : d.summary}` : null,
+      earlier.length ? `Earlier roles: ${earlier.join('; ')}` : null,
+      pastEdu.length ? `Education: ${pastEdu.join('; ')}` : null,
+      d.certifications.length ? `Certifications: ${d.certifications.join(', ')}` : null,
+      d.languages.length ? `Languages: ${d.languages.join(', ')}` : null,
+    ].filter(Boolean).join('\n');
+  }
+
+  function openLiPreview(d) {
+    const box = $('#li-fields');
+    box.replaceChildren();
+    $('#li-title').textContent = `From LinkedIn: ${d.fullName}`;
+    const cur = k => (fp.elements[k].value || '').trim();
+
+    // A simple field: ticked when the form's field is empty; unticked (showing what's there now) when it differs;
+    // left out when it already matches.
+    function fieldRow(key, label, value, current) {
+      if (!value) return;
+      if (current && current.toLowerCase() === value.toLowerCase()) return;
+      box.append(h('label', { class: 'li-row' },
+        h('input', { type: 'checkbox', name: key, checked: !current }),
+        h('span', { class: 'li-label' }, label),
+        h('span', { class: 'li-value' }, value,
+          current ? h('small', { class: 'muted li-now' }, `Replaces: ${current}`) : null)));
+    }
+
+    fieldRow('name', 'Name', [d.firstName, d.lastName].filter(Boolean).join(' '), [cur('firstName'), cur('lastName')].filter(Boolean).join(' '));
+    fieldRow('location', 'Location', d.location, cur('location'));
+    fieldRow('email', 'Email', d.email, cur('email'));
+    fieldRow('phone', 'Phone', d.phone, cur('phone'));
+    fieldRow('linkedin', 'LinkedIn URL', d.linkedin, cur('linkedin'));
+
+    // Work: pick up to 3 roles; current ones are ticked when the form has no work yet.
+    if (d.experience.length) {
+      const existing = readRepeat(REPEAT.jobs);
+      const anyCurrent = d.experience.some(x => x.current);
+      const group = h('fieldset', { class: 'li-group' },
+        h('legend', {}, 'Work ', h('small', { class: 'muted' },
+          existing.length ? `— ticking any replaces the ${existing.length} work row${existing.length > 1 ? 's' : ''} you have now` : '— up to 3')));
+      d.experience.forEach((x, i) => {
+        const tick = !existing.length && (anyCurrent ? x.current : i === 0);
+        group.append(h('label', { class: 'li-row' },
+          h('input', { type: 'checkbox', name: 'job', value: i, checked: tick }),
+          h('span', { class: 'li-value' }, `${x.title}${x.company ? ` at ${x.company}` : ''}`,
+            h('small', { class: 'muted li-now' }, [span(x.start, x.end), x.current ? 'current' : ''].filter(Boolean).join(' · ')))));
+      });
+      group.addEventListener('change', e => {
+        if (e.target.name !== 'job') return;
+        const on = group.querySelectorAll('input[name=job]:checked');
+        if (on.length > 3) { e.target.checked = false; toast('Up to 3 work roles'); }
+      });
+      // Keep ticked jobs within the limit even if more than 3 are current.
+      [...group.querySelectorAll('input[name=job]:checked')].slice(3).forEach(c => (c.checked = false));
+      box.append(group);
+    }
+
+    // Student: from an education entry that hasn't finished yet.
+    const studying = d.education.find(x => x.current);
+    if (studying) {
+      const already = fp.elements.student.checked && cur('university') && cur('major');
+      box.append(h('label', { class: 'li-row' },
+        h('input', { type: 'checkbox', name: 'student', checked: !already }),
+        h('span', { class: 'li-label' }, 'Student'),
+        h('span', { class: 'li-value' }, [studying.field, studying.school].filter(Boolean).join(' at '),
+          h('small', { class: 'muted li-now' }, [studying.degree, studying.end ? `until ${shortMonth(studying.end)}` : ''].filter(Boolean).join(' · ')))));
+    }
+
+    // Notes: headline, skills, about, earlier roles and past education, appended to what's there.
+    const notes = liNotes(d);
+    if (notes.split('\n').length > 1) {
+      const dup = d.headline && fp.elements.notes.value.includes(d.headline);
+      box.append(h('label', { class: 'li-row li-notes' },
+        h('input', { type: 'checkbox', name: 'notes', checked: !dup }),
+        h('span', { class: 'li-label' }, 'Add to notes'),
+        h('span', { class: 'li-value' }, h('pre', { class: 'li-pre' }, notes))));
+    }
+
+    if (!box.children.length) box.append(h('p', { class: 'muted' }, 'Everything in this PDF is already on the profile.'));
+    dlgLi.showModal();
+  }
+
+  fli.addEventListener('submit', e => {
+    e.preventDefault();
+    const d = liData;
+    if (!d) return dlgLi.close();
+    const on = name => fli.querySelector(`input[name="${name}"]`)?.checked;
+    const filled = [];
+    if (on('name')) { fp.elements.firstName.value = d.firstName; fp.elements.lastName.value = d.lastName; filled.push('name'); }
+    for (const k of ['location', 'email', 'phone', 'linkedin']) if (on(k)) { fp.elements[k].value = d[k]; filled.push(k === 'linkedin' ? 'LinkedIn URL' : k); }
+    const jobs = [...fli.querySelectorAll('input[name=job]:checked')].map(c => d.experience[Number(c.value)]).slice(0, 3);
+    if (jobs.length) { fillRepeat(REPEAT.jobs, jobs.map(x => ({ title: x.title, company: x.company }))); filled.push('work'); }
+    if (on('student')) {
+      const s = d.education.find(x => x.current);
+      fp.elements.student.checked = true;
+      fp.elements.university.value = s.school;
+      if (s.field) fp.elements.major.value = s.field;
+      updateStudentFields();
+      filled.push('student details');
+    }
+    if (on('notes')) {
+      const n = fp.elements.notes;
+      n.value = (n.value.trim() ? n.value.trim() + '\n\n' : '') + liNotes(d);
+      filled.push('notes');
+    }
+    dlgLi.close();
+    liData = null;
+    toast(filled.length ? `Filled in ${filled.join(', ')}. Check it, then Save.` : 'Nothing filled in');
+  });
+
   $('#btn-delete').addEventListener('click', () => {
     const p = byId(editingId);
     if (!p) return;

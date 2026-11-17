@@ -50,7 +50,11 @@
   <!-- Add / edit person -->
   <dialog id="dlg-person">
     <form id="form-person" method="dialog">
-      <h2 id="person-title">Add person</h2>
+      <div class="dlg-head">
+        <h2 id="person-title">Add person</h2>
+        <button type="button" id="btn-li-pdf" title="Fill in this profile from a LinkedIn profile PDF (on their profile: More → Save to PDF)">Fill from LinkedIn PDF</button>
+        <input type="file" id="li-file" accept=".pdf,application/pdf" hidden>
+      </div>
       <div class="grid">
         <label>First name *<input name="firstName" required></label>
         <label>Last name<input name="lastName"></label>
@@ -270,6 +274,20 @@
     </div>
   </dialog>
 
+  <!-- Fill from a LinkedIn profile PDF: preview what will be filled in -->
+  <dialog id="dlg-li" class="wide">
+    <form id="form-li" method="dialog">
+      <h2 id="li-title">From LinkedIn PDF</h2>
+      <p class="muted small">Pick what to fill in. Fields that already have something are unticked so nothing is overwritten by accident. Nothing is saved until you click Save on the profile.</p>
+      <div id="li-fields" class="li-fields"></div>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button type="button" data-close>Cancel</button>
+        <button type="submit" class="primary">Fill in</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Settings -->
   <dialog id="dlg-settings">
     <form id="form-settings" method="dialog">
@@ -366,6 +384,7 @@
   <script src="js/store.js"></script>
   <script src="js/prompts.js"></script>
   <script src="js/ai.js"></script>
+  <script src="js/linkedin.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
